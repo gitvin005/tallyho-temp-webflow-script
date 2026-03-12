@@ -1,17 +1,18 @@
-
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
-    import {
-    initializeAppCheck,
-    ReCaptchaV3Provider,
-    getToken,
-  } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app-check.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-functions.js";
+import {
+  initializeAppCheck,
+  ReCaptchaV3Provider,
+  getToken,
+} from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app-check.js";
+import {
+  getFunctions,
+  httpsCallable,
+} from "https://www.gstatic.com/firebasejs/11.9.1/firebase-functions.js";
 import {
   getAnalytics,
   logEvent,
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
- 
 
 // Firestore imports
 import {
@@ -40,8 +41,11 @@ import {
   uploadBytes,
   getDownloadURL,
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-storage.js";
-  
-  import { getAuth, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+
+import {
+  getAuth,
+  signInWithCustomToken,
+} from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
 
 // ✅ Initialize Firebase
 const firebaseConfig = {
@@ -57,10 +61,10 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-  const appCheck = initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider('6LeBq1crAAAAAC65ElQyEb-nHRWn53XkwNk1z4Ts'),
-    isTokenAutoRefreshEnabled: true, // ensures token is auto-refreshed
-  });
+const appCheck = initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6LeBq1crAAAAAC65ElQyEb-nHRWn53XkwNk1z4Ts"),
+  isTokenAutoRefreshEnabled: true, // ensures token is auto-refreshed
+});
 
 // ✅ Now it's safe to initialize other services
 const analytics = getAnalytics(app);
@@ -68,8 +72,6 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 const auth = getAuth(app);
 const functions = getFunctions(app);
-  
-  
 
 document.addEventListener("DOMContentLoaded", function () {
   const locationDropdown = document.getElementById("uk-location");
@@ -94,8 +96,6 @@ document.addEventListener("DOMContentLoaded", function () {
     console.warn("#uk-location is not a valid select or text input element.");
   }
 });
-  
-
 
 document.addEventListener("DOMContentLoaded", function () {
   const locationDropdown = document.getElementById("uk-location-list");
@@ -145,11 +145,10 @@ document.querySelectorAll("#Offerjob").forEach((button) => {
     // Redirect with query parameters
     const baseUrl = window.location.origin;
     window.location.href = `${baseUrl}/book-now?userId=${encodeURIComponent(
-      userId
+      userId,
     )}&name=${encodeURIComponent(userName)}&rate=${encodeURIComponent(rate)}`;
   });
 });
-  
 
 window.addEventListener("DOMContentLoaded", () => {
   const urlParams = new URLSearchParams(window.location.search);
@@ -197,8 +196,8 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
 });
-  
-  async function getMemberData() {
+
+async function getMemberData() {
   const memberstack = window.$memberstackDom;
   const member = await memberstack.getCurrentMember();
   return member || null;
@@ -214,9 +213,6 @@ async function getEmailId() {
   const member = await memberstack.getCurrentMember();
   return member?.data?.auth?.email || null;
 }
-  
-
-
 
 document.addEventListener("DOMContentLoaded", async () => {
   const memberstack = window.$memberstackDom;
@@ -237,7 +233,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   const hasValidPlan = planConnections.some(
-    (plan) => plan.planId === VALID_PLAN_ID && plan.status === "ACTIVE"
+    (plan) => plan.planId === VALID_PLAN_ID && plan.status === "ACTIVE",
   );
 
   if (!hasValidPlan) {
@@ -267,11 +263,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   const firstIncomplete = steps.find(
-    ({ field, optional }) => !optional && !isFieldFilled(field, getFieldValue(field))
+    ({ field, optional }) =>
+      !optional && !isFieldFilled(field, getFieldValue(field)),
   );
 
   const allRequiredFilled = steps.every(
-    ({ field, optional }) => optional || isFieldFilled(field, getFieldValue(field))
+    ({ field, optional }) =>
+      optional || isFieldFilled(field, getFieldValue(field)),
   );
 
   if (allRequiredFilled && currentPath.startsWith("/onboarding/")) {
@@ -285,9 +283,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const currentStepIndex = steps.findIndex((step) => step.path === currentPath);
 
   if (currentStepIndex !== -1) {
-    const previousIncomplete = steps.slice(0, currentStepIndex).find(
-      ({ field, optional }) => !optional && !isFieldFilled(field, getFieldValue(field))
-    );
+    const previousIncomplete = steps
+      .slice(0, currentStepIndex)
+      .find(
+        ({ field, optional }) =>
+          !optional && !isFieldFilled(field, getFieldValue(field)),
+      );
 
     if (previousIncomplete) {
       return (window.location.href = previousIncomplete.path);
@@ -305,72 +306,67 @@ document.addEventListener("DOMContentLoaded", async () => {
     return (window.location.href = firstIncomplete.path);
   }
 });
-  
+
 document.addEventListener("DOMContentLoaded", async function () {
-    const userId = await getLoginId();
-    const currentPath = window.location.pathname;
+  const userId = await getLoginId();
+  const currentPath = window.location.pathname;
 
-    // List of pages where logged-in users shouldn't go
-    const blockedPaths = [
-      "/authentication/sign-up",
-      "/authentication/login"
-    ];
+  // List of pages where logged-in users shouldn't go
+  const blockedPaths = ["/authentication/sign-up", "/authentication/login"];
 
-    if (userId && blockedPaths.includes(currentPath)) {
-      window.location.href = "/"; // Change to "/dashboard" if needed
-    }
-  });
-
- 
-
-
-  
- 
-
-document.getElementById("stripeAccount")?.addEventListener("click", async () => {
-  try {
-    const memberstack = window.$memberstackDom;
-    if (!memberstack) {
-      alert("Memberstack not loaded.");
-      return;
-    }
-
-    const { data: memberData } = await memberstack.getCurrentMember() || {};
-    if (!memberData) {
-      alert("User not logged in.");
-      return;
-    }
-
-    const memberstackId = memberData.id || "";
-    const name = memberData.customFields?.["first-name"] || "Guest";
-    const email = memberData.auth?.email || "";
-
-    if (!email || !memberstackId) {
-      alert("Missing user information.");
-      return;
-    }
-
-    const response = await fetch('https://us-central1-tallyhotemps.cloudfunctions.net/createStripeExpressAccount', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ memberstackId, name, email })
-    });
-
-    const result = await response.json();
-
-    // Handle response
-    if (response.ok && result?.url) {
-      window.location.href = result.url;
-    } else {
-      alert(result?.error || "Something went wrong.");
-    }
-  } catch (error) {
-    alert("Error creating Stripe account.");
+  if (userId && blockedPaths.includes(currentPath)) {
+    window.location.href = "/"; // Change to "/dashboard" if needed
   }
 });
 
+document
+  .getElementById("stripeAccount")
+  ?.addEventListener("click", async () => {
+    try {
+      const memberstack = window.$memberstackDom;
+      if (!memberstack) {
+        alert("Memberstack not loaded.");
+        return;
+      }
 
-  async function markTransferPendingRequest(jobId) {
+      const { data: memberData } = (await memberstack.getCurrentMember()) || {};
+      if (!memberData) {
+        alert("User not logged in.");
+        return;
+      }
+
+      const memberstackId = memberData.id || "";
+      const name = memberData.customFields?.["first-name"] || "Guest";
+      const email = memberData.auth?.email || "";
+
+      if (!email || !memberstackId) {
+        alert("Missing user information.");
+        return;
+      }
+
+      const response = await fetch(
+        "https://us-central1-tallyhotemps.cloudfunctions.net/createStripeExpressAccount",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ memberstackId, name, email }),
+        },
+      );
+
+      const result = await response.json();
+
+      // Handle response
+      if (response.ok && result?.url) {
+        window.location.href = result.url;
+      } else {
+        alert(result?.error || "Something went wrong.");
+      }
+    } catch (error) {
+      alert("Error creating Stripe account.");
+    }
+  });
+
+async function markTransferPendingRequest(jobId) {
   try {
     const jobSnap = await getDoc(doc(db, "jobOffers", jobId));
     if (!jobSnap.exists()) {
@@ -393,33 +389,36 @@ document.getElementById("stripeAccount")?.addEventListener("click", async () => 
 
     const transactionId = querySnap.docs[0].id;
 
-    const response = await fetch("https://us-central1-tallyhotemps.cloudfunctions.net/markTransferPending", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const response = await fetch(
+      "https://us-central1-tallyhotemps.cloudfunctions.net/markTransferPending",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          jobOfferId: jobId,
+          sessionId: sessionId,
+          transactionId: transactionId,
+        }),
       },
-      body: JSON.stringify({
-        jobOfferId: jobId,
-        sessionId: sessionId,
-        transactionId: transactionId,
-      }),
-    });
+    );
 
     const result = await response.json();
 
     if (response.ok) {
-      return { success: true, message: result.message || "Transfer scheduled." };
+      return {
+        success: true,
+        message: result.message || "Transfer scheduled.",
+      };
     } else {
       return { success: false, message: result.error || "Unknown error" };
     }
-
   } catch (err) {
     return { success: false, message: err.message };
   }
 }
 
-  
- 
 document.querySelectorAll(".contact-btn").forEach((button) => {
   button.addEventListener("click", async function () {
     const receiverId = this.dataset.userId;
@@ -432,24 +431,29 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
 
     const userData = userDoc.data();
     const fullName = `${userData.name}`.trim();
-    const userSlug = encodeURIComponent(window.formatChatName(fullName).toLowerCase().replace(/\s+/g, "-"));
+    const userSlug = encodeURIComponent(
+      window.formatChatName(fullName).toLowerCase().replace(/\s+/g, "-"),
+    );
 
     sessionStorage.setItem(`nameToId:${userSlug}`, receiverId);
-    
-	window.sessionId = sessionStorage.getItem(`nameToId:${userSlug}`);
-  
+
+    window.sessionId = sessionStorage.getItem(`nameToId:${userSlug}`);
+
     window.location.href = `/conversation?user=${userSlug}`;
   });
 });
-  
 
 // Full JavaScript Chat System Code for Webflow (Memberstack + Firebase)
 (async () => {
   const memberstack = window.$memberstackDom;
   const memberData = await memberstack.getCurrentMember();
   const senderId = memberData.data.id;
-  const senderName = memberData.data.customFields["first-name"] + " " + memberData.data.customFields["last-name"];
-  const senderImage = memberData.data.profileImage?.trim() || "/default-avatar.png";
+  const senderName =
+    memberData.data.customFields["first-name"] +
+    " " +
+    memberData.data.customFields["last-name"];
+  const senderImage =
+    memberData.data.profileImage?.trim() || "/default-avatar.png";
 
   const messagesContainer = document.getElementById("messagesList");
   const requestCountBadge = document.getElementById("requestCount");
@@ -467,9 +471,8 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
   let uploadedFileURL = null;
   let isUploading = false;
 
-
-const userSlug = new URLSearchParams(window.location.search).get("user");
-const receiverId = sessionStorage.getItem(`nameToId:${userSlug}`);
+  const userSlug = new URLSearchParams(window.location.search).get("user");
+  const receiverId = sessionStorage.getItem(`nameToId:${userSlug}`);
   const conversationId = receiverId
     ? [senderId, receiverId].sort().join("_")
     : null;
@@ -482,17 +485,19 @@ const receiverId = sessionStorage.getItem(`nameToId:${userSlug}`);
       status: "active",
       createdAt: serverTimestamp(),
     },
-    { merge: true }
+    { merge: true },
   );
 
- const previewFile = (file) => {
-  const fileUrl = URL.createObjectURL(file);
-   
-  previewContainer.innerHTML = `
+  const previewFile = (file) => {
+    const fileUrl = URL.createObjectURL(file);
+
+    previewContainer.innerHTML = `
     <div class="file-preview-wrapper" style="position: relative; display: inline-block;">
-      ${file.type.startsWith("image/")
-        ? `<img src="${fileUrl}" class="file-preview-image" />`
-        : `<p class="file-preview-name">${file.name}</p>`}
+      ${
+        file.type.startsWith("image/")
+          ? `<img src="${fileUrl}" class="file-preview-image" />`
+          : `<p class="file-preview-name">${file.name}</p>`
+      }
       <button class="remove-preview" style="
         position: absolute;
         top: 5px;
@@ -509,21 +514,20 @@ const receiverId = sessionStorage.getItem(`nameToId:${userSlug}`);
     </div>
   `;
 
-  // Add event listener to remove button
-  const removeBtn = previewContainer.querySelector(".remove-preview");
-  removeBtn.addEventListener("click", () => {
-    previewContainer.innerHTML = "";
-    fileInput.value = ""; // ✅ THIS clears the file from the input too
-    uploadedFile = null;
-    uploadedFileURL = null
-  });
-};
-
+    // Add event listener to remove button
+    const removeBtn = previewContainer.querySelector(".remove-preview");
+    removeBtn.addEventListener("click", () => {
+      previewContainer.innerHTML = "";
+      fileInput.value = ""; // ✅ THIS clears the file from the input too
+      uploadedFile = null;
+      uploadedFileURL = null;
+    });
+  };
 
   const uploadFile = async (file) => {
     const storageRef = ref(
       storage,
-      `images/conversations/${conversationId}/${Date.now()}_${file.name}`
+      `images/conversations/${conversationId}/${Date.now()}_${file.name}`,
     );
     await uploadBytes(storageRef, file);
     return getDownloadURL(storageRef);
@@ -548,7 +552,7 @@ const receiverId = sessionStorage.getItem(`nameToId:${userSlug}`);
     const msg = document.createElement("div");
     msg.classList.add(
       "message",
-      data.senderId === senderId ? "sender" : "receiver"
+      data.senderId === senderId ? "sender" : "receiver",
     );
 
     let fileHTML = "";
@@ -571,13 +575,10 @@ const receiverId = sessionStorage.getItem(`nameToId:${userSlug}`);
 
     // Combine them
     let contentHTML = `${fileHTML}${messageHTML}`;
-   
 
     msg.innerHTML = `
         <div class="message-header">
-  			<img src="${
-          data.profileImage || senderImage
-        }" class="msg-profile-pic" />
+  			<img src="${data.profileImage || senderImage}" class="msg-profile-pic" />
         <div>
   			<strong>${window.formatChatName(data.name)}</strong>
           <span class="time">${
@@ -601,106 +602,104 @@ const receiverId = sessionStorage.getItem(`nameToId:${userSlug}`);
     messagesContainer.appendChild(msg);
   };
 
-fileInput?.addEventListener("change", async function () {
-  uploadedFile = this.files[0];
-  if (!uploadedFile) return;
+  fileInput?.addEventListener("change", async function () {
+    uploadedFile = this.files[0];
+    if (!uploadedFile) return;
 
-  previewFile(uploadedFile);
+    previewFile(uploadedFile);
 
-  isUploading = true;
-  try {
-    uploadedFileURL = await uploadFile(uploadedFile);
-  } catch (err) {
-    alert("Upload failed, please try again.");
+    isUploading = true;
+    try {
+      uploadedFileURL = await uploadFile(uploadedFile);
+    } catch (err) {
+      alert("Upload failed, please try again.");
+      uploadedFile = null;
+      uploadedFileURL = null;
+      previewContainer.innerHTML = "";
+    }
+    isUploading = false;
+  });
+
+  // Function to send a message
+  const sendMessage = async () => {
+    if (senderId === receiverId) {
+      alert("You cannot send a message to yourself.");
+      return;
+    }
+    const rawMessage = inputEl.value;
+    const message = rawMessage.trim();
+
+    if (isUploading) {
+      alert("Please wait, file is still uploading...");
+      return;
+    }
+
+    if (!message && !uploadedFileURL) return;
+
+    const chatSnap = await getDoc(
+      doc(db, "users", receiverId, "chats", senderId),
+    );
+    const isNew = !chatSnap.exists();
+
+    if (isNew) {
+      await setDoc(doc(db, "users", receiverId, "requests", senderId), {
+        userId: senderId,
+        timestamp: serverTimestamp(),
+      });
+
+      await addDoc(collection(db, "users", receiverId, "notifications"), {
+        title: "New Request",
+        message: `${senderName} has sent you a request.`,
+        senderId,
+        senderName,
+        senderImage,
+        timestamp: serverTimestamp(),
+        read: false,
+      });
+    }
+
+    await addDoc(collection(db, "conversations", conversationId, "messages"), {
+      senderId,
+      receiverId,
+      message,
+      name: senderName,
+      profileImage: senderImage,
+      timestamp: serverTimestamp(),
+      fileUrl: uploadedFileURL || "",
+      fileName: uploadedFile?.name || "",
+      pending: isNew,
+      read: false,
+    });
+
+    await Promise.all([
+      setDoc(doc(db, "users", senderId, "chats", receiverId), {
+        conversationId,
+        userId: receiverId,
+        timestamp: serverTimestamp(),
+      }),
+      setDoc(doc(db, "users", receiverId, "chats", senderId), {
+        conversationId,
+        userId: senderId,
+        timestamp: serverTimestamp(),
+      }),
+    ]);
+
+    inputEl.value = "";
     uploadedFile = null;
     uploadedFileURL = null;
     previewContainer.innerHTML = "";
-  }
-  isUploading = false;
-});
-
-// Function to send a message
-const sendMessage = async () => {
-  if (senderId === receiverId) {
-    alert("You cannot send a message to yourself.");
-    return;
-  }
-  const rawMessage = inputEl.value;
-  const message = rawMessage.trim();
-
-  if (isUploading) {
-    alert("Please wait, file is still uploading...");
-    return;
-  }
-
-  if (!message && !uploadedFileURL) return;
-
-  const chatSnap = await getDoc(
-    doc(db, "users", receiverId, "chats", senderId)
-  );
-  const isNew = !chatSnap.exists(); 
-  
-  
-  if (isNew) {
-    await setDoc(doc(db, "users", receiverId, "requests", senderId), {
-      userId: senderId,
-      timestamp: serverTimestamp(),
-    });
-
-    await addDoc(collection(db, "users", receiverId, "notifications"), {
-      title: "New Request",
-      message: `${senderName} has sent you a request.`,
-      senderId,
-      senderName,
-      senderImage,
-      timestamp: serverTimestamp(),
-      read: false,
-    });
-  }
-
-  await addDoc(collection(db, "conversations", conversationId, "messages"), {
-    senderId,
-    receiverId,
-    message,
-    name: senderName,
-    profileImage: senderImage,
-    timestamp: serverTimestamp(),
-    fileUrl: uploadedFileURL || "",
-    fileName: uploadedFile?.name || "",
-    pending: isNew,
-    read: false,
-  });
-
-  await Promise.all([
-    setDoc(doc(db, "users", senderId, "chats", receiverId), {
-      conversationId,
-      userId: receiverId,
-      timestamp: serverTimestamp(),
-    }),
-    setDoc(doc(db, "users", receiverId, "chats", senderId), {
-      conversationId,
-      userId: senderId,
-      timestamp: serverTimestamp(),
-    }),
-  ]);
-
-  inputEl.value = "";
-  uploadedFile = null;
-  uploadedFileURL = null;
-  previewContainer.innerHTML = "";
-};
-
+  };
 
   sendButton?.addEventListener("click", sendMessage);
 
   if (receiverId) {
     const chatSnap = await getDoc(
-      doc(db, "users", senderId, "chats", receiverId)
+      doc(db, "users", senderId, "chats", receiverId),
     );
     if (chatSnap.exists()) {
       const q = query(
         collection(db, "conversations", conversationId, "messages"),
-        orderBy("timestamp", "asc")
+        orderBy("timestamp", "asc"),
       );
 
       onSnapshot(q, (snapshot) => {
@@ -727,183 +726,235 @@ const sendMessage = async () => {
 
   let unsubscribe = null;
   chatListContainer.innerHTML = "<p>Loading...</p>";
-  
-   
-const loadChats = (sortType = "recent") => {
-  if (unsubscribe) unsubscribe();
 
-  let chatRef = collection(db, "users", senderId, "chats");
-  let chatQuery;
+  let activeConversationUnsub = null;
+  let activeReceiverId = null;
 
-  if (sortType === "newest") {
-    chatQuery = query(chatRef, orderBy("timestamp", "desc"));
-  } else if (sortType === "oldest") {
-    chatQuery = query(chatRef, orderBy("timestamp", "asc"));
-  } else {
-    chatQuery = query(chatRef, orderBy("timestamp", "desc")); // default
-  }
+  async function openChat(userId) {
+    activeReceiverId = userId;
+    const conversationId = [senderId, userId].sort().join("_");
 
- unsubscribe = onSnapshot(chatQuery, async (snapshot) => {
-   
-    // 🔥 Auto open first chat BEFORE rendering UI
-  if (!receiverId && !snapshot.empty) {
-    const firstChatData = snapshot.docs[0].data();
-    const firstUserId = firstChatData.userId;
-
-    if (firstUserId) {
-      const firstUserDoc = await getDoc(doc(db, "users", firstUserId));
-
-      if (firstUserDoc.exists()) {
-        const firstUserName = window.formatChatName(firstUserDoc.data().name);
-        const firstSlug = encodeURIComponent(
-          firstUserName.toLowerCase().trim().replace(/\s+/g, "-")
-        );
-
-        // use replace so browser doesn't flicker
-        window.location.replace(`/conversation?user=${firstSlug}`);
-        return;
-      }
-    }
-  }
-   
-  const frag = document.createDocumentFragment();
-  const renderedUserIds = new Set();
-
-  // Only show "No chats found" message temporarily
-  if (snapshot.empty) {
-    chatListContainer.innerHTML = "<p>No chats found.</p>";
-  }
-  const userFetches = snapshot.docs.map(async (chatDoc) => {
-    const chatData = chatDoc.data();
-    const userId = chatData.userId;
-    if (!userId) return;
-
-    const requestRef = doc(db, "users", senderId, "requests", userId);
-    const requestSnap = await getDoc(requestRef);
-    if (requestSnap.exists()) return;
-
-    renderedUserIds.add(userId);
-
-    const userDoc = await getDoc(doc(db, "users", userId));
-    const userExists = userDoc.exists();
-    const name = userExists ? window.formatChatName(userDoc.data().name) : "Deleted User";
-    const image = userDoc.data()?.profileImage?.trim() || "/default-avatar.png";
-
-    const userSlug = encodeURIComponent(name.toLowerCase().trim().replace(/\s+/g, "-"));
-    const slugKey = `nameToId:${userSlug}`;
-    if (!sessionStorage.getItem(slugKey) && userExists) {
-      sessionStorage.setItem(slugKey, userId);
+    // stop previous listener
+    if (activeConversationUnsub) {
+      activeConversationUnsub();
     }
 
-    const unreadSnap = await getDocs(
-      query(
-        collection(db, "conversations", chatData.conversationId, "messages"),
-        where("receiverId", "==", senderId),
-        where("read", "==", false)
-      )
+    messagesContainer.innerHTML = "<p>Loading chat...</p>";
+
+    const q = query(
+      collection(db, "conversations", conversationId, "messages"),
+      orderBy("timestamp", "asc"),
     );
 
-    const isActive = userId === receiverId;
-    const wrapper = document.createElement("div");
-    wrapper.className = `chat-item-wrapper ${isActive ? "active-chat" : ""}`;
-    wrapper.innerHTML = `
-      <a href="/conversation?user=${userSlug}" class="chat-item">
+    activeConversationUnsub = onSnapshot(q, (snapshot) => {
+      messagesContainer.innerHTML = "";
+
+      snapshot.forEach((doc) => {
+        appendMessage(doc.data(), senderId);
+      });
+
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      snapshot.docs.forEach(async (docSnap) => {
+        const data = docSnap.data();
+
+        if (data.receiverId === senderId && !data.read) {
+          await updateDoc(docSnap.ref, { read: true });
+        }
+      });
+    });
+  }
+
+  const loadChats = (sortType = "recent") => {
+    if (unsubscribe) unsubscribe();
+
+    let chatRef = collection(db, "users", senderId, "chats");
+    let chatQuery;
+
+    if (sortType === "newest") {
+      chatQuery = query(chatRef, orderBy("timestamp", "desc"));
+    } else if (sortType === "oldest") {
+      chatQuery = query(chatRef, orderBy("timestamp", "asc"));
+    } else {
+      chatQuery = query(chatRef, orderBy("timestamp", "desc")); // default
+    }
+
+    unsubscribe = onSnapshot(chatQuery, async (snapshot) => {
+      const frag = document.createDocumentFragment();
+      const renderedUserIds = new Set();
+
+      // Only show "No chats found" message temporarily
+      if (snapshot.empty) {
+        chatListContainer.innerHTML = "<p>No chats found.</p>";
+      }
+      const userFetches = snapshot.docs.map(async (chatDoc) => {
+        const chatData = chatDoc.data();
+        const userId = chatData.userId;
+        if (!userId) return;
+
+        const requestRef = doc(db, "users", senderId, "requests", userId);
+        const requestSnap = await getDoc(requestRef);
+        if (requestSnap.exists()) return;
+
+        renderedUserIds.add(userId);
+
+        const userDoc = await getDoc(doc(db, "users", userId));
+        const userExists = userDoc.exists();
+        const name = userExists
+          ? window.formatChatName(userDoc.data().name)
+          : "Deleted User";
+        const image =
+          userDoc.data()?.profileImage?.trim() || "/default-avatar.png";
+
+        const userSlug = encodeURIComponent(
+          name.toLowerCase().trim().replace(/\s+/g, "-"),
+        );
+        const slugKey = `nameToId:${userSlug}`;
+        if (!sessionStorage.getItem(slugKey) && userExists) {
+          sessionStorage.setItem(slugKey, userId);
+        }
+
+        const unreadSnap = await getDocs(
+          query(
+            collection(
+              db,
+              "conversations",
+              chatData.conversationId,
+              "messages",
+            ),
+            where("receiverId", "==", senderId),
+            where("read", "==", false),
+          ),
+        );
+
+        const isActive = userId === receiverId;
+        const wrapper = document.createElement("div");
+        wrapper.className = `chat-item-wrapper ${isActive ? "active-chat" : ""}`;
+        wrapper.innerHTML = `
+      <a href="#" class="chat-item">
         <img src="${image}" class="profile-pic" />
         <span >${name}</span>
         ${unreadSnap.size > 0 ? `<span class="msg-count-badge">${unreadSnap.size}</span>` : ""}
       </a>`;
 
-    frag.appendChild(wrapper);
+        frag.appendChild(wrapper);
 
-    if (isActive) {
-  const bookBtn = document.querySelector(".bookbutton");
+        
+      chatListContainer.appendChild(frag);
 
-  bookBtn.innerHTML = `
+      /* ----- CLICK CHAT USER ----- */
+
+      chatListContainer.querySelectorAll(".chat-item").forEach((item) => {
+        item.addEventListener("click", (e) => {
+          e.preventDefault();
+
+          const userId = item.dataset.user;
+
+          openChat(userId);
+
+          document
+            .querySelectorAll(".chat-item-wrapper")
+            .forEach((el) => el.classList.remove("active-chat"));
+
+          item.parentElement.classList.add("active-chat");
+        });
+      });
+
+      /* ----- AUTO OPEN FIRST CHAT ----- */
+
+      if (!activeReceiverId && !snapshot.empty) {
+        const firstUser = snapshot.docs[0].data().userId;
+
+        openChat(firstUser);
+      }
+
+        if (isActive) {
+          const bookBtn = document.querySelector(".bookbutton");
+
+          bookBtn.innerHTML = `
     <a href="#" id="bookFreelancer" class="button is-small" data-id="${userId}">
       Book Freelancer
     </a>
   `;
 
-  messagewrapper.appendChild(bookBtn);
+          messagewrapper.appendChild(bookBtn);
 
-  const freelancerBtn = document.getElementById("bookFreelancer");
+          const freelancerBtn = document.getElementById("bookFreelancer");
 
-      if (freelancerBtn) {
-        freelancerBtn.addEventListener("click", function (e) {
-          e.preventDefault();
+          if (freelancerBtn) {
+            freelancerBtn.addEventListener("click", function (e) {
+              e.preventDefault();
 
-          const userId = freelancerBtn.getAttribute("data-id");
+              const userId = freelancerBtn.getAttribute("data-id");
 
-          fetch(`https://api-ten-gamma-86.vercel.app/api/proxy-freelancer?id=${userId}`)
-            .then((res) => res.json())
-            .then((data) => {
+              fetch(
+                `https://api-ten-gamma-86.vercel.app/api/proxy-freelancer?id=${userId}`,
+              )
+                .then((res) => res.json())
+                .then((data) => {
+                  const freelancer = data?.fieldData;
 
-              const freelancer = data?.fieldData;
+                  if (freelancer && freelancer["user-id"]) {
+                    const name = freelancer["full-name"] || "Unknown";
+                    const rate = freelancer.rate || "0";
+                    const id = freelancer["user-id"];
 
-              if (freelancer && freelancer["user-id"]) {
+                    const baseUrl = window.location.origin;
 
-                const name = freelancer["full-name"] || "Unknown";
-                const rate = freelancer.rate || "0";
-                const id = freelancer["user-id"];
-
-                const baseUrl = window.location.origin;
-
-                // Redirect with query params
-                window.location.href =
-                  `${baseUrl}/book-now?userId=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&rate=${encodeURIComponent(rate)}`;
-
-              } else {
-                alert("Freelancer not valid or data not found.");
-              }
-
-            })
-            .catch((err) => {
-              console.error(err);
-              alert("An error occurred while fetching freelancer data.");
+                    // Redirect with query params
+                    window.location.href = `${baseUrl}/book-now?userId=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&rate=${encodeURIComponent(rate)}`;
+                  } else {
+                    alert("Freelancer not valid or data not found.");
+                  }
+                })
+                .catch((err) => {
+                  console.error(err);
+                  alert("An error occurred while fetching freelancer data.");
+                });
             });
-        });
-      }
-    }
-  });
+          }
+        }
+      });
 
-  await Promise.all(userFetches);
+      await Promise.all(userFetches);
 
-  // clear container only once
-  chatListContainer.innerHTML = "";
-  chatListContainer.appendChild(frag);
-   
-  // 🔥 FIX: show receiver if not already rendered
-  if (!renderedUserIds.has(receiverId)) {
-    try {
-      const newUserDoc = await getDoc(doc(db, "users", receiverId));
-      if (newUserDoc.exists()) {
-        const newUserData = newUserDoc.data();
-        const newName = window.formatChatName(newUserData.name) || "Unknown";
-        const newImage = newUserData.profileImage?.trim() || "/default-avatar.png";
-        const newUserSlug = encodeURIComponent(newName.toLowerCase().trim().replace(/\s+/g, "-"));
+      // clear container only once
+      chatListContainer.innerHTML = "";
+      chatListContainer.appendChild(frag);
 
-        const newWrapper = document.createElement("div");
-        newWrapper.className = "chat-item-wrapper active-chat";
-        newWrapper.innerHTML = `
+      // 🔥 FIX: show receiver if not already rendered
+      if (!renderedUserIds.has(receiverId)) {
+        try {
+          const newUserDoc = await getDoc(doc(db, "users", receiverId));
+          if (newUserDoc.exists()) {
+            const newUserData = newUserDoc.data();
+            const newName =
+              window.formatChatName(newUserData.name) || "Unknown";
+            const newImage =
+              newUserData.profileImage?.trim() || "/default-avatar.png";
+            const newUserSlug = encodeURIComponent(
+              newName.toLowerCase().trim().replace(/\s+/g, "-"),
+            );
+
+            const newWrapper = document.createElement("div");
+            newWrapper.className = "chat-item-wrapper active-chat";
+            newWrapper.innerHTML = `
           <a href="/conversation?user=${newUserSlug}" class="chat-item">
             <img src="${newImage}" class="profile-pic" />
             <span>${newName}</span>
           </a>`;
 
-        chatListContainer.prepend(newWrapper);
+            chatListContainer.prepend(newWrapper);
+          }
+        } catch (error) {
+          console.error("Error fetching new user:", error);
+        }
       }
-    } catch (error) {
-      console.error("Error fetching new user:", error);
-    }
-  }
-});
+    });
+  };
 
-};
+  loadChats();
 
-loadChats();
-
-  
-  
   dropdown.addEventListener("change", (e) => {
     const sortType = e.target.value;
     loadChats(sortType);
@@ -912,7 +963,7 @@ loadChats();
   onSnapshot(
     query(
       collection(db, "users", senderId, "requests"),
-      orderBy("timestamp", "desc")
+      orderBy("timestamp", "desc"),
     ),
     async (snapshot) => {
       requestListContainer.innerHTML = "";
@@ -930,7 +981,9 @@ loadChats();
       const requests = snapshot.docs.map(async (docSnap) => {
         const reqData = docSnap.data();
         const userDoc = await getDoc(doc(db, "users", reqData.userId));
-        const name = userDoc.exists() ? window.formatChatName(userDoc.data().name) : "Deleted User";
+        const name = userDoc.exists()
+          ? window.formatChatName(userDoc.data().name)
+          : "Deleted User";
         const image =
           userDoc.data()?.profileImage?.trim() || "/default-avatar.png";
 
@@ -948,60 +1001,67 @@ loadChats();
       requestListContainer.appendChild(frag);
 
       requestListContainer.querySelectorAll(".accept-btn").forEach((btn) => {
-  btn.addEventListener("click", async () => {
-    const userId = btn.dataset.id;
-    const convoId = [senderId, userId].sort().join("_");
+        btn.addEventListener("click", async () => {
+          const userId = btn.dataset.id;
+          const convoId = [senderId, userId].sort().join("_");
 
-    try {
-      // Create chat docs for both users
-      await Promise.all([
-        setDoc(doc(db, "users", senderId, "chats", userId), {
-          conversationId: convoId,
-          userId,
-          timestamp: serverTimestamp(),
-        }),
-        setDoc(doc(db, "users", userId, "chats", senderId), {
-          conversationId: convoId,
-          userId: senderId,
-          timestamp: serverTimestamp(),
-        }),
-        deleteDoc(doc(db, "users", senderId, "requests", userId)),
-      ]);
+          try {
+            // Create chat docs for both users
+            await Promise.all([
+              setDoc(doc(db, "users", senderId, "chats", userId), {
+                conversationId: convoId,
+                userId,
+                timestamp: serverTimestamp(),
+              }),
+              setDoc(doc(db, "users", userId, "chats", senderId), {
+                conversationId: convoId,
+                userId: senderId,
+                timestamp: serverTimestamp(),
+              }),
+              deleteDoc(doc(db, "users", senderId, "requests", userId)),
+            ]);
 
-const messagesRef = collection(db, "conversations", convoId, "messages");
-const pendingQuery = query(
-  messagesRef,
-  where("senderId", "==", userId), // assuming sender of request
-  where("pending", "==", true)
-);
-const pendingMessages = await getDocs(pendingQuery);
+            const messagesRef = collection(
+              db,
+              "conversations",
+              convoId,
+              "messages",
+            );
+            const pendingQuery = query(
+              messagesRef,
+              where("senderId", "==", userId), // assuming sender of request
+              where("pending", "==", true),
+            );
+            const pendingMessages = await getDocs(pendingQuery);
 
-for (const msgDoc of pendingMessages.docs) {
-  await updateDoc(doc(db, "conversations", convoId, "messages", msgDoc.id), {
-    pending: false,
-  });
-}
+            for (const msgDoc of pendingMessages.docs) {
+              await updateDoc(
+                doc(db, "conversations", convoId, "messages", msgDoc.id),
+                {
+                  pending: false,
+                },
+              );
+            }
 
-      const notificationsRef = collection(
-        db,
-        "users",
-        senderId,
-        "notifications"
-      );
-      const q = query(notificationsRef, where("senderId", "==", userId));
-      const querySnapshot = await getDocs(q);
+            const notificationsRef = collection(
+              db,
+              "users",
+              senderId,
+              "notifications",
+            );
+            const q = query(notificationsRef, where("senderId", "==", userId));
+            const querySnapshot = await getDocs(q);
 
-      for (const docSnap of querySnapshot.docs) {
-        await deleteDoc(
-          doc(db, "users", senderId, "notifications", docSnap.id)
-        );
-      }
-    } catch (error) {
-      console.error("Error accepting request:", error);
-    }
-  });
-});
-
+            for (const docSnap of querySnapshot.docs) {
+              await deleteDoc(
+                doc(db, "users", senderId, "notifications", docSnap.id),
+              );
+            }
+          } catch (error) {
+            console.error("Error accepting request:", error);
+          }
+        });
+      });
 
       requestListContainer.querySelectorAll(".reject-btn").forEach((btn) => {
         btn.addEventListener("click", async () => {
@@ -1010,7 +1070,7 @@ for (const msgDoc of pendingMessages.docs) {
             db,
             "users",
             senderId,
-            "notifications"
+            "notifications",
           );
 
           const q = query(notificationsRef, where("senderId", "==", userId));
@@ -1018,7 +1078,7 @@ for (const msgDoc of pendingMessages.docs) {
 
           querySnapshot.forEach(async (docSnap) => {
             await deleteDoc(
-              doc(db, "users", senderId, "notifications", docSnap.id)
+              doc(db, "users", senderId, "notifications", docSnap.id),
             );
           });
 
@@ -1026,7 +1086,7 @@ for (const msgDoc of pendingMessages.docs) {
           await deleteDoc(doc(db, "users", senderId, "chats", userId));
         });
       });
-    }
+    },
   );
 
   // Lightbox Preview on image click
@@ -1061,7 +1121,7 @@ const loadNotifications = async () => {
   // === Firestore Notifications ===
   const notifQuery = query(
     collection(db, "users", userId, "notifications"),
-    orderBy("timestamp", "desc")
+    orderBy("timestamp", "desc"),
   );
   onSnapshot(notifQuery, async (snapshot) => {
     notificationList.innerHTML = ""; // Clear on every snapshot update
@@ -1081,8 +1141,8 @@ const loadNotifications = async () => {
         item.innerHTML = `
           <div class="notification request_notfication">
             <img src="${data.senderImage}" alt="${
-          data.senderName
-        }" width="30" />
+              data.senderName
+            }" width="30" />
             <div>
               <strong>${data.title}</strong><br/>
               <p>${data.message}</p>
@@ -1094,7 +1154,7 @@ const loadNotifications = async () => {
             </div>
           </div>`;
         item.addEventListener("click", () =>
-          markNotificationAsRead(userId, notificationId)
+          markNotificationAsRead(userId, notificationId),
         );
         notificationList.appendChild(item);
       });
@@ -1104,7 +1164,7 @@ const loadNotifications = async () => {
     const jobQuery = query(
       collection(db, "jobOffers"),
       where("freelancerId", "==", userId),
-      where("status", "==", "pending")
+      where("status", "==", "pending"),
     );
     const jobSnapshot = await getDocs(jobQuery);
 
@@ -1148,8 +1208,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 // finance page =============
-
-
 
 // filter component =================
 
@@ -1209,16 +1267,15 @@ window.applyDateFilter = ({
     }
   });
 };
-  
+
 const quill = new Quill("#description-editor", {
   theme: "snow",
   placeholder: "Write job description here...",
 });
-  
 
 // book now page ==================
 async function hireFreelancer(freelancerId, amount, jobData, clientId) {
-  const clientEmail = await getEmailId(); 
+  const clientEmail = await getEmailId();
 
   try {
     const response = await fetch(
@@ -1235,7 +1292,7 @@ async function hireFreelancer(freelancerId, amount, jobData, clientId) {
           clientId: jobData?.clientId,
           jobTitle: jobData?.jobTitle || "", // assuming jobTitle is inside jobData
         }),
-      }
+      },
     );
 
     const result = await response.json();
@@ -1328,8 +1385,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         amount,
         serviceCharge,
         total,
-        status: "pending", 
-        paymentStatus: "paid", 
+        status: "pending",
+        paymentStatus: "paid",
       };
 
       // Set hire button values
@@ -1353,10 +1410,6 @@ document.addEventListener("DOMContentLoaded", async function () {
   });
 });
 
-
-
-
-
 // ✅ Client View: Load Pending Verifications
 document.addEventListener("DOMContentLoaded", async function () {
   const loadClientPendingVerifications = async () => {
@@ -1367,7 +1420,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     const q = query(
       collection(db, "jobOffers"),
       where("clientId", "==", loggedInUserId),
-      where("status", "==", "awaiting-client-verification")
+      where("status", "==", "awaiting-client-verification"),
     );
 
     const snapshot = await getDocs(q);
@@ -1446,7 +1499,6 @@ window.renderLoadMore = (container, itemArray, btnId, step = 2) => {
   showNext();
 };
 
-
 // home page service filter ==============
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -1458,7 +1510,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       const category = link.getAttribute("data-service"); // Get service name
       const targetUrl = `/client-pages/freelancer-directory?service_equal=%5B"${encodeURIComponent(
-        category
+        category,
       )}"%5D`;
 
       window.location.href = targetUrl;
@@ -1470,7 +1522,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (selectedService) {
     const checkboxes = document.querySelectorAll(".service-checkbox-item");
-    
 
     checkboxes.forEach((checkbox) => {
       const serviceName = checkbox
@@ -1480,7 +1531,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (serviceName === selectedService.trim()) {
         const checkboxDiv = checkbox.querySelector(".service-checkbox");
-        checkbox.classList.add("is-list-active")
+        checkbox.classList.add("is-list-active");
         checkboxDiv.classList.add("w--redirected-checked"); // Add the class to the div
       }
     });
@@ -1497,7 +1548,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const selectedCategories = urlParams.get("service");
 
   if (selectedCategories) {
-    const categoryArray = selectedCategories.split(","); 
+    const categoryArray = selectedCategories.split(",");
 
     document
       .querySelectorAll('input[name="Filter-One-Option-1"]')
@@ -1516,7 +1567,6 @@ $(".service-item").each(function () {
   $(".service-field").append('<option value="' + s + '">' + s + "</option>");
 });
 
-
 let added = new Set();
 
 $(".service-text").each(function () {
@@ -1527,80 +1577,85 @@ $(".service-text").each(function () {
   }
 });
 
+$(".ms-profile-image-preview")
+  .on("load", function () {
+    let imageSrc = $(this).attr("srcset");
 
-$(".ms-profile-image-preview").on("load", function () {
-  let imageSrc = $(this).attr("srcset");
+    if (imageSrc && imageSrc.trim() !== "") {
+      $('input[profile-image="true"]').removeAttr("required");
+      $("#errorMsg").css("display", "none"); // hide error message
+    } else {
+      $("#errorMsg").css("display", "block"); // show error message
+    }
+  })
+  .each(function () {
+    if (this.complete) $(this).trigger("load"); // trigger load for cached images
+  });
 
-  if (imageSrc && imageSrc.trim() !== "") {
-    $('input[profile-image="true"]').removeAttr("required");
-    $('#errorMsg').css("display", "none"); // hide error message
-  } else {
-    $('#errorMsg').css("display", "block"); // show error message
+document.addEventListener("DOMContentLoaded", function () {
+  // Debounce function
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
   }
-}).each(function () {
-  if (this.complete) $(this).trigger("load"); // trigger load for cached images
-});
 
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Debounce function
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
+  const fields = document.querySelectorAll("[ms-code-require]");
+  fields.forEach((field) => {
+    const errorElement = document.querySelector(
+      `[ms-code-require-error="${field.getAttribute("ms-code-require")}"]`,
+    );
+    if (errorElement) {
+      errorElement.style.display = "none";
     }
 
-    const fields = document.querySelectorAll('[ms-code-require]');
-    fields.forEach(field => {
-        const errorElement = document.querySelector(`[ms-code-require-error="${field.getAttribute('ms-code-require')}"]`);
-        if (errorElement) {
-            errorElement.style.display = 'none';
+    const form = field.closest("form");
+    const submitButton = form
+      ? form.querySelector(
+          `[ms-code-submit-button="${field.getAttribute("ms-code-require")}"]`,
+        )
+      : null;
+
+    function validateField() {
+      const value = field.value.trim(); // only check for trimmed (non-space) value
+      const isValid = value !== "";
+
+      if (errorElement) {
+        errorElement.style.display = isValid ? "none" : "block";
+      }
+      if (submitButton) {
+        submitButton.style.opacity = isValid ? "1" : "0.5";
+        submitButton.style.pointerEvents = isValid ? "auto" : "none";
+      }
+      return isValid;
+    }
+
+    const debouncedValidate = debounce(validateField, 500);
+
+    field.addEventListener("blur", validateField);
+    field.addEventListener("input", debouncedValidate);
+
+    if (form) {
+      form.addEventListener("submit", function (event) {
+        if (!validateField() && submitButton) {
+          event.preventDefault();
+          field.focus();
         }
-
-        const form = field.closest('form');
-        const submitButton = form ? form.querySelector(`[ms-code-submit-button="${field.getAttribute('ms-code-require')}"]`) : null;
-
-        function validateField() {
-            const value = field.value.trim(); // only check for trimmed (non-space) value
-            const isValid = value !== '';
-
-            if (errorElement) {
-                errorElement.style.display = isValid ? 'none' : 'block';
-            }
-            if (submitButton) {
-                submitButton.style.opacity = isValid ? '1' : '0.5';
-                submitButton.style.pointerEvents = isValid ? 'auto' : 'none';
-            }
-            return isValid;
-        }
-
-        const debouncedValidate = debounce(validateField, 500);
-
-        field.addEventListener('blur', validateField);
-        field.addEventListener('input', debouncedValidate);
-
-        if (form) {
-            form.addEventListener('submit', function(event) {
-                if (!validateField() && submitButton) {
-                    event.preventDefault();
-                    field.focus();
-                }
-            });
-        }
-    });
+      });
+    }
+  });
 });
-  
-  
- /* Name formetting *****/
-  
-window.formatChatName = function(fullName) {
-  const parts = fullName.trim().split(' ');
+
+/* Name formetting *****/
+
+window.formatChatName = function (fullName) {
+  const parts = fullName.trim().split(" ");
   if (parts.length >= 2) {
     const firstName = parts[0];
     const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
@@ -1611,40 +1666,41 @@ window.formatChatName = function(fullName) {
 
 function formatName(el) {
   if (el.dataset.formatted) return;
-  
+
   const fullName = el.textContent.trim();
-  const parts = fullName.split(' ');
+  const parts = fullName.split(" ");
   if (parts.length >= 2) {
     const firstName = parts[0];
     const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
     el.textContent = `${firstName} ${lastInitial}.`;
-    el.dataset.formatted = 'true'; // mark as done
+    el.dataset.formatted = "true"; // mark as done
   }
 }
 
 function formatAllNames() {
-  document.querySelectorAll('[data-formet-name]').forEach(formatName);
+  document.querySelectorAll("[data-formet-name]").forEach(formatName);
 }
 
 // Run on initial load
-document.addEventListener('DOMContentLoaded', formatAllNames);
+document.addEventListener("DOMContentLoaded", formatAllNames);
 
 // Watch for dynamically added freelancers
-const observer = new MutationObserver(function(mutations) {
-  mutations.forEach(function(mutation) {
-    mutation.addedNodes.forEach(function(node) {
+const observer = new MutationObserver(function (mutations) {
+  mutations.forEach(function (mutation) {
+    mutation.addedNodes.forEach(function (node) {
       if (node.nodeType !== 1) return; // skip non-elements
 
-      if (node.hasAttribute('data-formet-name')) {
+      if (node.hasAttribute("data-formet-name")) {
         formatName(node);
       }
-      
-      node.querySelectorAll?.('[data-formet-name]').forEach(formatName);
+
+      node.querySelectorAll?.("[data-formet-name]").forEach(formatName);
     });
   });
 });
 
 observer.observe(document.body, {
   childList: true,
-  subtree: true
+  subtree: true,
 });
+
