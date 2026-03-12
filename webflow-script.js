@@ -725,31 +725,11 @@ const sendMessage = async () => {
     return;
   }
 
- let unsubscribe = null;
-let messageUnsubscribe = null;
-
-chatListContainer.innerHTML = "<p>Loading...</p>";
-
-/* -------------------------
-GET USER FROM URL
---------------------------*/
-const params = new URLSearchParams(window.location.search);
-const slugFromUrl = params.get("user");
-
-let userreceiverId = null;
-
-if (slugFromUrl) {
-  const storedId = sessionStorage.getItem(`nameToId:${slugFromUrl}`);
-  if (storedId) {
-    userreceiverId = storedId;
-  }
-}
-
-/* -------------------------
-LOAD CHAT LIST
---------------------------*/
+  let unsubscribe = null;
+  chatListContainer.innerHTML = "<p>Loading...</p>";
+  
+   
 const loadChats = (sortType = "recent") => {
-
   if (unsubscribe) unsubscribe();
 
   let chatRef = collection(db, "users", senderId, "chats");
@@ -760,186 +740,175 @@ const loadChats = (sortType = "recent") => {
   } else if (sortType === "oldest") {
     chatQuery = query(chatRef, orderBy("timestamp", "asc"));
   } else {
-    chatQuery = query(chatRef, orderBy("timestamp", "desc"));
+    chatQuery = query(chatRef, orderBy("timestamp", "desc")); // default
   }
 
-  unsubscribe = onSnapshot(chatQuery, async (snapshot) => {
+ unsubscribe = onSnapshot(chatQuery, async (snapshot) => {
+   
+    // 🔥 Auto open first chat BEFORE rendering UI
+  // 🔥 Auto open first chat BEFORE rendering UI
+if (!receiverId && !snapshot.empty) {
 
-    if (snapshot.empty) {
-      chatListContainer.innerHTML = "<p>No chats found.</p>";
+  const firstChatData = snapshot.docs[0].data();
+  const firstUserId = firstChatData.userId;
+
+  if (firstUserId) {
+
+    const firstUserDoc = await getDoc(doc(db, "users", firstUserId));
+
+    if (firstUserDoc.exists()) {
+
+      const firstUserName = window.formatChatName(firstUserDoc.data().name);
+      const firstSlug = encodeURIComponent(
+        firstUserName.toLowerCase().trim().replace(/\s+/g, "-")
+      );
+
+      // 🟢 set receiverId so it doesn't loop
+      receiverId = firstUserId;
+
+      // redirect only once
+      window.location.replace(`/conversation?user=${firstSlug}`);
       return;
+
+    }
+  }
+}
+   
+  const frag = document.createDocumentFragment();
+  const renderedUserIds = new Set();
+
+  // Only show "No chats found" message temporarily
+  if (snapshot.empty) {
+    chatListContainer.innerHTML = "<p>No chats found.</p>";
+  }
+  const userFetches = snapshot.docs.map(async (chatDoc) => {
+    const chatData = chatDoc.data();
+    const userId = chatData.userId;
+    if (!userId) return;
+
+    const requestRef = doc(db, "users", senderId, "requests", userId);
+    const requestSnap = await getDoc(requestRef);
+    if (requestSnap.exists()) return;
+
+    renderedUserIds.add(userId);
+
+    const userDoc = await getDoc(doc(db, "users", userId));
+    const userExists = userDoc.exists();
+    const name = userExists ? window.formatChatName(userDoc.data().name) : "Deleted User";
+    const image = userDoc.data()?.profileImage?.trim() || "/default-avatar.png";
+
+    const userSlug = encodeURIComponent(name.toLowerCase().trim().replace(/\s+/g, "-"));
+    const slugKey = `nameToId:${userSlug}`;
+    if (!sessionStorage.getItem(slugKey) && userExists) {
+      sessionStorage.setItem(slugKey, userId);
     }
 
-    const frag = document.createDocumentFragment();
+    const unreadSnap = await getDocs(
+      query(
+        collection(db, "conversations", chatData.conversationId, "messages"),
+        where("receiverId", "==", senderId),
+        where("read", "==", false)
+      )
+    );
 
-    const userFetches = snapshot.docs.map(async (chatDoc) => {
+    const isActive = userId === receiverId;
+    const wrapper = document.createElement("div");
+    wrapper.className = `chat-item-wrapper ${isActive ? "active-chat" : ""}`;
+    wrapper.innerHTML = `
+      <a href="/conversation?user=${userSlug}" class="chat-item">
+        <img src="${image}" class="profile-pic" />
+        <span >${name}</span>
+        ${unreadSnap.size > 0 ? `<span class="msg-count-badge">${unreadSnap.size}</span>` : ""}
+      </a>`;
 
-      const chatData = chatDoc.data();
-      const userId = chatData.userId;
-      if (!userId) return;
+    frag.appendChild(wrapper);
 
-      const userDoc = await getDoc(doc(db, "users", userId));
-      const userExists = userDoc.exists();
+    if (isActive) {
+  const bookBtn = document.querySelector(".bookbutton");
 
-      const name = userExists
-        ? window.formatChatName(userDoc.data().name)
-        : "Deleted User";
+  bookBtn.innerHTML = `
+    <a href="#" id="bookFreelancer" class="button is-small" data-id="${userId}">
+      Book Freelancer
+    </a>
+  `;
 
-      const image =
-        userDoc.data()?.profileImage?.trim() || "/default-avatar.png";
+  messagewrapper.appendChild(bookBtn);
 
-      const userSlug = encodeURIComponent(
-        name.toLowerCase().trim().replace(/\s+/g, "-")
-      );
+  const freelancerBtn = document.getElementById("bookFreelancer");
 
-      /* store slug -> userId */
-      const slugKey = `nameToId:${userSlug}`;
-      if (!sessionStorage.getItem(slugKey) && userExists) {
-        sessionStorage.setItem(slugKey, userId);
+      if (freelancerBtn) {
+        freelancerBtn.addEventListener("click", function (e) {
+          e.preventDefault();
+
+          const userId = freelancerBtn.getAttribute("data-id");
+
+          fetch(`https://api-ten-gamma-86.vercel.app/api/proxy-freelancer?id=${userId}`)
+            .then((res) => res.json())
+            .then((data) => {
+
+              const freelancer = data?.fieldData;
+
+              if (freelancer && freelancer["user-id"]) {
+
+                const name = freelancer["full-name"] || "Unknown";
+                const rate = freelancer.rate || "0";
+                const id = freelancer["user-id"];
+
+                const baseUrl = window.location.origin;
+
+                // Redirect with query params
+                window.location.href =
+                  `${baseUrl}/book-now?userId=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&rate=${encodeURIComponent(rate)}`;
+
+              } else {
+                alert("Freelancer not valid or data not found.");
+              }
+
+            })
+            .catch((err) => {
+              console.error(err);
+              alert("An error occurred while fetching freelancer data.");
+            });
+        });
       }
-
-      const unreadSnap = await getDocs(
-        query(
-          collection(db, "conversations", chatData.conversationId, "messages"),
-          where("receiverId", "==", senderId),
-          where("read", "==", false)
-        )
-      );
-
-      const isActive = userId === userreceiverId;
-
-      const wrapper = document.createElement("div");
-      wrapper.className = `chat-item-wrapper ${isActive ? "active-chat" : ""}`;
-
-      wrapper.innerHTML = `
-        <a href="#" class="chat-item" data-user="${userId}" data-slug="${userSlug}">
-          <img src="${image}" class="profile-pic"/>
-          <span>${name}</span>
-          ${
-            unreadSnap.size > 0
-              ? `<span class="msg-count-badge">${unreadSnap.size}</span>`
-              : ""
-          }
-        </a>
-      `;
-
-      frag.appendChild(wrapper);
-
-    });
-
-    await Promise.all(userFetches);
-
-    chatListContainer.innerHTML = "";
-    chatListContainer.appendChild(frag);
-
-    attachChatClickEvents();
-
-    /* -------------------------
-    AUTO OPEN FIRST CHAT
-    --------------------------*/
-    if (!userreceiverId && snapshot.docs.length > 0) {
-
-      const firstUserId = snapshot.docs[0].data().userId;
-
-      const firstUserDoc = await getDoc(doc(db, "users", firstUserId));
-
-      if (firstUserDoc.exists()) {
-
-        const firstUserName = window.formatChatName(firstUserDoc.data().name);
-
-        const firstSlug = encodeURIComponent(
-          firstUserName.toLowerCase().trim().replace(/\s+/g, "-")
-        );
-
-        userreceiverId = firstUserId;
-
-        history.replaceState({}, "", `/conversation?user=${firstSlug}`);
-
-        openChat(firstUserId);
-
-      }
-
     }
-
-    /* open chat if slug already selected */
-    if (userreceiverId) {
-      openChat(userreceiverId);
-    }
-
   });
+
+  await Promise.all(userFetches);
+
+  // clear container only once
+  chatListContainer.innerHTML = "";
+  chatListContainer.appendChild(frag);
+   
+  // 🔥 FIX: show receiver if not already rendered
+  if (!renderedUserIds.has(receiverId)) {
+    try {
+      const newUserDoc = await getDoc(doc(db, "users", receiverId));
+      if (newUserDoc.exists()) {
+        const newUserData = newUserDoc.data();
+        const newName = window.formatChatName(newUserData.name) || "Unknown";
+        const newImage = newUserData.profileImage?.trim() || "/default-avatar.png";
+        const newUserSlug = encodeURIComponent(newName.toLowerCase().trim().replace(/\s+/g, "-"));
+
+        const newWrapper = document.createElement("div");
+        newWrapper.className = "chat-item-wrapper active-chat";
+        newWrapper.innerHTML = `
+          <a href="/conversation?user=${newUserSlug}" class="chat-item">
+            <img src="${newImage}" class="profile-pic" />
+            <span>${newName}</span>
+          </a>`;
+
+        chatListContainer.prepend(newWrapper);
+      }
+    } catch (error) {
+      console.error("Error fetching new user:", error);
+    }
+  }
+});
 
 };
 
 loadChats();
-
-/* -------------------------
-CLICK CHAT USER
---------------------------*/
-function attachChatClickEvents() {
-
-  document.querySelectorAll(".chat-item").forEach((item) => {
-
-    item.addEventListener("click", function (e) {
-
-      e.preventDefault();
-
-      const newUserId = this.dataset.user;
-      const slug = this.dataset.slug;
-
-      userreceiverId = newUserId;
-
-      history.pushState({}, "", `/conversation?user=${slug}`);
-
-      document.querySelectorAll(".chat-item-wrapper").forEach((el) => {
-        el.classList.remove("active-chat");
-      });
-
-      this.closest(".chat-item-wrapper").classList.add("active-chat");
-
-      openChat(newUserId);
-
-    });
-
-  });
-
-}
-
-/* -------------------------
-OPEN CHAT
---------------------------*/
-function openChat(userId) {
-
-  const conversationId = [senderId, userId].sort().join("_");
-
-  if (messageUnsubscribe) messageUnsubscribe();
-
-  const q = query(
-    collection(db, "conversations", conversationId, "messages"),
-    orderBy("timestamp", "asc")
-  );
-
-  messageUnsubscribe = onSnapshot(q, (snapshot) => {
-
-    messagesContainer.innerHTML = "";
-
-    snapshot.forEach((doc) => {
-
-      const msg = doc.data();
-
-      const div = document.createElement("div");
-
-      div.className =
-        msg.senderId === senderId ? "message sent" : "message received";
-
-      div.textContent = msg.text;
-
-      messagesContainer.appendChild(div);
-
-    });
-
-  });
-
-}
 
   
   
