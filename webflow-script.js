@@ -725,11 +725,29 @@ const sendMessage = async () => {
     return;
   }
 
-  let unsubscribe = null;
-  chatListContainer.innerHTML = "<p>Loading...</p>";
+ let unsubscribe = null;
 let messageUnsubscribe = null;
+
+chatListContainer.innerHTML = "<p>Loading...</p>";
+
+/* -------------------------
+GET USER FROM URL
+--------------------------*/
+const params = new URLSearchParams(window.location.search);
+const slugFromUrl = params.get("user");
+
 let userreceiverId = null;
 
+if (slugFromUrl) {
+  const storedId = sessionStorage.getItem(`nameToId:${slugFromUrl}`);
+  if (storedId) {
+    userreceiverId = storedId;
+  }
+}
+
+/* -------------------------
+LOAD CHAT LIST
+--------------------------*/
 const loadChats = (sortType = "recent") => {
 
   if (unsubscribe) unsubscribe();
@@ -753,15 +771,12 @@ const loadChats = (sortType = "recent") => {
     }
 
     const frag = document.createDocumentFragment();
-    const renderedUserIds = new Set();
 
     const userFetches = snapshot.docs.map(async (chatDoc) => {
 
       const chatData = chatDoc.data();
       const userId = chatData.userId;
       if (!userId) return;
-
-      renderedUserIds.add(userId);
 
       const userDoc = await getDoc(doc(db, "users", userId));
       const userExists = userDoc.exists();
@@ -776,6 +791,12 @@ const loadChats = (sortType = "recent") => {
       const userSlug = encodeURIComponent(
         name.toLowerCase().trim().replace(/\s+/g, "-")
       );
+
+      /* store slug -> userId */
+      const slugKey = `nameToId:${userSlug}`;
+      if (!sessionStorage.getItem(slugKey) && userExists) {
+        sessionStorage.setItem(slugKey, userId);
+      }
 
       const unreadSnap = await getDocs(
         query(
@@ -792,7 +813,7 @@ const loadChats = (sortType = "recent") => {
 
       wrapper.innerHTML = `
         <a href="#" class="chat-item" data-user="${userId}" data-slug="${userSlug}">
-          <img src="${image}" class="profile-pic" />
+          <img src="${image}" class="profile-pic"/>
           <span>${name}</span>
           ${
             unreadSnap.size > 0
@@ -813,7 +834,9 @@ const loadChats = (sortType = "recent") => {
 
     attachChatClickEvents();
 
-    // 🔥 Auto open first chat
+    /* -------------------------
+    AUTO OPEN FIRST CHAT
+    --------------------------*/
     if (!userreceiverId && snapshot.docs.length > 0) {
 
       const firstUserId = snapshot.docs[0].data().userId;
@@ -838,12 +861,20 @@ const loadChats = (sortType = "recent") => {
 
     }
 
+    /* open chat if slug already selected */
+    if (userreceiverId) {
+      openChat(userreceiverId);
+    }
+
   });
 
 };
 
 loadChats();
 
+/* -------------------------
+CLICK CHAT USER
+--------------------------*/
 function attachChatClickEvents() {
 
   document.querySelectorAll(".chat-item").forEach((item) => {
@@ -873,6 +904,9 @@ function attachChatClickEvents() {
 
 }
 
+/* -------------------------
+OPEN CHAT
+--------------------------*/
 function openChat(userId) {
 
   const conversationId = [senderId, userId].sort().join("_");
