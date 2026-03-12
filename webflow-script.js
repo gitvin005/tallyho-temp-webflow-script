@@ -817,36 +817,49 @@ const loadChats = (sortType = "recent") => {
     frag.appendChild(wrapper);
 
     if (isActive) {
-      const bookBtn = document.querySelector('.bookbutton');
-      bookBtn.innerHTML = `
-        <a href="" id="bookFreelancer" class="button is-small" data-id="${userId}" data-ms-content="clients">
-          Book Freelancer
-        </a>`;
-      messagewrapper.appendChild(bookBtn);
+  const bookBtn = document.querySelector(".bookbutton");
 
-      const freelancerBtn = document.getElementById('bookFreelancer');
+  bookBtn.innerHTML = `
+    <a href="#" id="bookFreelancer" class="button is-small" data-id="${userId}">
+      Book Freelancer
+    </a>
+  `;
+
+  messagewrapper.appendChild(bookBtn);
+
+  const freelancerBtn = document.getElementById("bookFreelancer");
+
       if (freelancerBtn) {
-        freelancerBtn.addEventListener('click', function (e) {
+        freelancerBtn.addEventListener("click", function (e) {
           e.preventDefault();
-          const userId = freelancerBtn.getAttribute('data-id');
+
+          const userId = freelancerBtn.getAttribute("data-id");
 
           fetch(`https://api-ten-gamma-86.vercel.app/api/proxy-freelancer?id=${userId}`)
             .then((res) => res.json())
             .then((data) => {
-           
+
               const freelancer = data?.fieldData;
+
               if (freelancer && freelancer["user-id"]) {
+
                 const name = freelancer["full-name"] || "Unknown";
                 const rate = freelancer.rate || "0";
-                const slug = freelancer.slug;
-                freelancerBtn.setAttribute("data-name", name);
-                freelancerBtn.setAttribute("data-rate", rate);
-                window.location.href = `${window.location.origin}/freelancers/${slug}`;
+                const id = freelancer["user-id"];
+
+                const baseUrl = window.location.origin;
+
+                // Redirect with query params
+                window.location.href =
+                  `${baseUrl}/book-now?userId=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&rate=${encodeURIComponent(rate)}`;
+
               } else {
                 alert("Freelancer not valid or data not found.");
               }
+
             })
             .catch((err) => {
+              console.error(err);
               alert("An error occurred while fetching freelancer data.");
             });
         });
