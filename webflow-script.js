@@ -473,7 +473,7 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
 
   const userSlug = new URLSearchParams(window.location.search).get("user");
   let receiverId = sessionStorage.getItem(`nameToId:${userSlug}`);
-  const conversationId = receiverId
+  let conversationId = receiverId
     ? [senderId, receiverId].sort().join("_")
     : null;
 
@@ -622,6 +622,11 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
 
   // Function to send a message
   const sendMessage = async () => {
+    if (!receiverId || !conversationId) {
+  alert("No user selected");
+  return;
+}
+
     if (senderId === receiverId) {
       alert("You cannot send a message to yourself.");
       return;
@@ -734,7 +739,7 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
     receiverId = userId;
     activeReceiverId = userId;
 
-    const conversationId = [senderId, userId].sort().join("_");
+     conversationId = [senderId, userId].sort().join("_");
 
     if (activeConversationUnsub) {
       activeConversationUnsub(); // stop previous listener
@@ -796,7 +801,12 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
           activeReceiverId = firstUserId;
           openChat(firstUserId);
 
-          break; // stop loop but DO NOT exit snapshot
+          const firstUserDoc = await getDoc(doc(db,"users",firstUserId));
+          if(firstUserDoc.exists()){
+            const name = window.formatChatName(firstUserDoc.data().name);
+            const slug = encodeURIComponent(name.toLowerCase().trim().replace(/\s+/g,"-"));
+            history.replaceState(null,"",`/conversation?user=${slug}`);
+          }
         }
       }
 
