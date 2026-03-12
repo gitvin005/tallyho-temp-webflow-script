@@ -781,12 +781,12 @@ const loadChats = (sortType = "recent") => {
  unsubscribe = onSnapshot(chatQuery, async (snapshot) => {
    
     // 🔥 Auto open first chat BEFORE rendering UI
-  if (!receiverId && !snapshot.empty) {
+  if (!receiverId && !snapshot.empty && !activeReceiverId) {
 
   for (const chatDoc of snapshot.docs) {
 
-    const firstChatData = chatDoc.data();
-    const firstUserId = firstChatData.userId;
+    const chatData = chatDoc.data();
+    const firstUserId = chatData.userId;
 
     if (!firstUserId) continue;
 
@@ -796,17 +796,10 @@ const loadChats = (sortType = "recent") => {
     // skip pending users
     if (requestSnap.exists()) continue;
 
-    const firstUserDoc = await getDoc(doc(db, "users", firstUserId));
+    activeReceiverId = firstUserId;
+    openChat(firstUserId);
 
-    if (firstUserDoc.exists()) {
-
-      if (!activeReceiverId) {
-        openChat(firstUserId);
-        activeReceiverId = firstUserId;
-      }
-
-      return;
-    }
+    break; // stop loop but DO NOT exit snapshot
   }
 
 }
