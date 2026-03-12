@@ -780,35 +780,37 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
     unsubscribe = onSnapshot(chatQuery, async (snapshot) => {
       // 🔥 Auto open first chat BEFORE rendering UI
       if (!receiverId && !snapshot.empty && !activeReceiverId) {
-        for (const chatDoc of snapshot.docs) {
-          const chatData = chatDoc.data();
-          const firstUserId = chatData.userId;
+  for (const chatDoc of snapshot.docs) {
 
-          if (!firstUserId) continue;
+    const chatData = chatDoc.data();
+    const firstUserId = chatData.userId;
 
-          const requestRef = doc(
-            db,
-            "users",
-            senderId,
-            "requests",
-            firstUserId,
-          );
-          const requestSnap = await getDoc(requestRef);
+    if (!firstUserId) continue;
 
-          // skip pending users
-          if (requestSnap.exists()) continue;
+    const requestRef = doc(db, "users", senderId, "requests", firstUserId);
+    const requestSnap = await getDoc(requestRef);
 
-          activeReceiverId = firstUserId;
-          openChat(firstUserId);
+    // skip pending users
+    if (requestSnap.exists()) continue;
 
-          const firstUserDoc = await getDoc(doc(db,"users",firstUserId));
-          if(firstUserDoc.exists()){
-            const name = window.formatChatName(firstUserDoc.data().name);
-            const slug = encodeURIComponent(name.toLowerCase().trim().replace(/\s+/g,"-"));
-            history.replaceState(null,"",`/conversation?user=${slug}`);
-          }
-        }
-      }
+    activeReceiverId = firstUserId;
+    openChat(firstUserId);
+
+    const firstUserDoc = await getDoc(doc(db, "users", firstUserId));
+
+    if (firstUserDoc.exists()) {
+      const name = window.formatChatName(firstUserDoc.data().name);
+      const slug = encodeURIComponent(
+        name.toLowerCase().trim().replace(/\s+/g, "-")
+      );
+
+      history.replaceState(null, "", `/conversation?user=${slug}`);
+    }
+
+    break; // ✅ stop after first valid chat
+
+  }
+}
 
       const frag = document.createDocumentFragment();
       const renderedUserIds = new Set();
