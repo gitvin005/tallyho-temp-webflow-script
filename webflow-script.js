@@ -746,33 +746,25 @@ const loadChats = (sortType = "recent") => {
  unsubscribe = onSnapshot(chatQuery, async (snapshot) => {
    
     // 🔥 Auto open first chat BEFORE rendering UI
-  // 🔥 Auto open first chat BEFORE rendering UI
-if (!receiverId && !snapshot.empty) {
+  if (!receiverId && !snapshot.empty) {
+    const firstChatData = snapshot.docs[0].data();
+    const firstUserId = firstChatData.userId;
 
-  const firstChatData = snapshot.docs[0].data();
-  const firstUserId = firstChatData.userId;
+    if (firstUserId) {
+      const firstUserDoc = await getDoc(doc(db, "users", firstUserId));
 
-  if (firstUserId) {
+      if (firstUserDoc.exists()) {
+        const firstUserName = window.formatChatName(firstUserDoc.data().name);
+        const firstSlug = encodeURIComponent(
+          firstUserName.toLowerCase().trim().replace(/\s+/g, "-")
+        );
 
-    const firstUserDoc = await getDoc(doc(db, "users", firstUserId));
-
-    if (firstUserDoc.exists()) {
-
-      const firstUserName = window.formatChatName(firstUserDoc.data().name);
-      const firstSlug = encodeURIComponent(
-        firstUserName.toLowerCase().trim().replace(/\s+/g, "-")
-      );
-
-      // 🟢 set receiverId so it doesn't loop
-      receiverId = firstUserId;
-
-      // redirect only once
-      window.location.replace(`/conversation?user=${firstSlug}`);
-      return;
-
+        // use replace so browser doesn't flicker
+        window.location.replace(`/conversation?user=${firstSlug}`);
+        return;
+      }
     }
   }
-}
    
   const frag = document.createDocumentFragment();
   const renderedUserIds = new Set();
