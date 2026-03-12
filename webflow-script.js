@@ -745,28 +745,26 @@ const loadChats = (sortType = "recent") => {
 
  unsubscribe = onSnapshot(chatQuery, async (snapshot) => {
    
-    if (!receiverId && !snapshot.empty) {
-      const firstChatData = snapshot.docs[0].data();
-      const firstUserId = firstChatData.userId;
+    // 🔥 Auto open first chat BEFORE rendering UI
+  if (!receiverId && !snapshot.empty) {
+    const firstChatData = snapshot.docs[0].data();
+    const firstUserId = firstChatData.userId;
 
-      if (firstUserId) {
-        try {
-          const firstUserDoc = await getDoc(doc(db, "users", firstUserId));
+    if (firstUserId) {
+      const firstUserDoc = await getDoc(doc(db, "users", firstUserId));
 
-          if (firstUserDoc.exists()) {
-            const firstUserName = window.formatChatName(firstUserDoc.data().name);
-            const firstSlug = encodeURIComponent(
-              firstUserName.toLowerCase().trim().replace(/\s+/g, "-")
-            );
+      if (firstUserDoc.exists()) {
+        const firstUserName = window.formatChatName(firstUserDoc.data().name);
+        const firstSlug = encodeURIComponent(
+          firstUserName.toLowerCase().trim().replace(/\s+/g, "-")
+        );
 
-            window.location.href = `/conversation?user=${firstSlug}`;
-            return;
-          }
-        } catch (err) {
-          console.error("Auto open first chat error:", err);
-        }
+        // use replace so browser doesn't flicker
+        window.location.replace(`/conversation?user=${firstSlug}`);
+        return;
       }
     }
+  }
    
   const frag = document.createDocumentFragment();
   const renderedUserIds = new Set();
