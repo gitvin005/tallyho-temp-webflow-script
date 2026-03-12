@@ -789,24 +789,37 @@ const loadChats = (sortType = "recent") => {
    
     // 🔥 Auto open first chat BEFORE rendering UI
   if (!receiverId && !snapshot.empty) {
-    const firstChatData = snapshot.docs[0].data();
+
+  for (const chatDoc of snapshot.docs) {
+
+    const firstChatData = chatDoc.data();
     const firstUserId = firstChatData.userId;
 
-    if (firstUserId) {
-      const firstUserDoc = await getDoc(doc(db, "users", firstUserId));
-      console.log(firstUserDoc)
-      if (firstUserDoc.exists()) {
-        const firstUserName = window.formatChatName(firstUserDoc.data().name);
-        const firstSlug = encodeURIComponent(
-          firstUserName.toLowerCase().trim().replace(/\s+/g, "-")
-        );
+    if (!firstUserId) continue;
 
-        // use replace so browser doesn't flicker
-        window.location.replace(`/conversation?user=${firstSlug}`);
-        return;
-      }
+    // 🔹 check if this user is still in pending requests
+    const requestRef = doc(db, "users", senderId, "requests", firstUserId);
+    const requestSnap = await getDoc(requestRef);
+
+    // skip pending users
+    if (requestSnap.exists()) continue;
+
+    const firstUserDoc = await getDoc(doc(db, "users", firstUserId));
+
+    if (firstUserDoc.exists()) {
+
+      const firstUserName = window.formatChatName(firstUserDoc.data().name);
+
+      const firstSlug = encodeURIComponent(
+        firstUserName.toLowerCase().trim().replace(/\s+/g, "-")
+      );
+
+      window.location.replace(`/conversation?user=${firstSlug}`);
+      return;
     }
   }
+
+}
    
   const frag = document.createDocumentFragment();
   const renderedUserIds = new Set();
@@ -861,7 +874,7 @@ const loadChats = (sortType = "recent") => {
   const bookBtn = document.querySelector(".bookbutton");
 
   bookBtn.innerHTML = `
-    <a href="#" id="bookFreelancer" class="button is-small" data-id="${userId}">
+    <a href="#" data-ms-content="clients" id="bookFreelancer" class="button is-small" data-id="${userId}">
       Book Freelancer
     </a>
   `;
