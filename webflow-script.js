@@ -1014,12 +1014,83 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
         const div = document.createElement("div");
         div.className = "request-item";
         div.innerHTML = `
-        <img src="${image}" class="profile-pic" />
-        <span>${name}</span>
-        <button class="accept-btn" data-id="${reqData.userId}">Accept</button>
-        <button class="reject-btn" data-id="${reqData.userId}">Reject</button>`;
+        <div class="request-user" data-user="${reqData.userId}">
+          <img src="${image}" class="profile-pic" />
+          <span>${name}</span>
+        </div>
+
+        <div class="request-actions">
+          <button class="accept-btn" data-id="${reqData.userId}">Accept</button>
+          <button class="reject-btn" data-id="${reqData.userId}">Reject</button>
+        </div>
+        `;
         frag.appendChild(div);
       });
+
+      requestListContainer.querySelectorAll(".request-user").forEach((item) => {
+
+  item.addEventListener("click", () => {
+
+    const userId = item.dataset.user;
+
+    // open messages of request user
+    openChat(userId);
+
+    // show request buttons in chat footer
+    showRequestActions(userId);
+
+  });
+
+});
+
+function showRequestActions(userId) {
+
+  const actionBox = document.getElementById("requestActionBox");
+
+  actionBox.innerHTML = `
+    <div class="request-bottom-actions">
+      <button id="chatAcceptBtn">Accept</button>
+      <button id="chatRejectBtn">Reject</button>
+    </div>
+  `;
+
+  document.getElementById("chatAcceptBtn").onclick = () => acceptRequest(userId);
+  document.getElementById("chatRejectBtn").onclick = () => rejectRequest(userId);
+
+}
+
+async function acceptRequest(userId) {
+
+  const convoId = [senderId, userId].sort().join("_");
+
+  await Promise.all([
+    setDoc(doc(db, "users", senderId, "chats", userId), {
+      conversationId: convoId,
+      userId,
+      timestamp: serverTimestamp()
+    }),
+
+    setDoc(doc(db, "users", userId, "chats", senderId), {
+      conversationId: convoId,
+      userId: senderId,
+      timestamp: serverTimestamp()
+    }),
+
+    deleteDoc(doc(db, "users", senderId, "requests", userId))
+  ]);
+
+  document.getElementById("chatRequestActions").innerHTML = "";
+
+}
+
+async function rejectRequest(userId) {
+
+  await deleteDoc(doc(db, "users", senderId, "requests", userId));
+
+  document.getElementById("chatRequestActions").innerHTML = "";
+  messagesContainer.innerHTML = "<p>Request rejected</p>";
+
+}
 
       await Promise.all(requests);
       requestListContainer.appendChild(frag);
