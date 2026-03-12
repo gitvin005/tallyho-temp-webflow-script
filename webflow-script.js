@@ -1,5 +1,73 @@
 
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import {
+    initializeAppCheck,
+    ReCaptchaV3Provider,
+    getToken,
+  } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app-check.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-functions.js";
+import {
+  getAnalytics,
+  logEvent,
+} from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
+ 
 
+// Firestore imports
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  query,
+  orderBy,
+  onSnapshot,
+  serverTimestamp,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+  getDocs,
+  where,
+  increment,
+  Timestamp,
+} from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
+// Storage imports
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+} from "https://www.gstatic.com/firebasejs/11.9.1/firebase-storage.js";
+  
+  import { getAuth, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+
+// ✅ Initialize Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyCl9PDBCmbz9f_oYRT1v8jVsF06Y7Er_is",
+  authDomain: "tallyhotemps.firebaseapp.com",
+  projectId: "tallyhotemps",
+  storageBucket: "tallyhotemps.firebasestorage.app",
+  messagingSenderId: "1084350726035",
+  storageBucket: "tallyhotemps.firebasestorage.app",
+  appId: "1:1084350726035:web:8d0e47398231fc5a5d3266",
+  measurementId: "G-2TXHW7ZH28",
+};
+
+const app = initializeApp(firebaseConfig);
+
+  const appCheck = initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider('6LeBq1crAAAAAC65ElQyEb-nHRWn53XkwNk1z4Ts'),
+    isTokenAutoRefreshEnabled: true, // ensures token is auto-refreshed
+  });
+
+// ✅ Now it's safe to initialize other services
+const analytics = getAnalytics(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+const auth = getAuth(app);
+const functions = getFunctions(app);
   
   
 
