@@ -729,10 +729,7 @@ const sendMessage = async () => {
   chatListContainer.innerHTML = "<p>Loading...</p>";
   
    
-let messageUnsubscribe = null;
-
 const loadChats = (sortType = "recent") => {
-
   if (unsubscribe) unsubscribe();
 
   let chatRef = collection(db, "users", senderId, "chats");
@@ -743,161 +740,154 @@ const loadChats = (sortType = "recent") => {
   } else if (sortType === "oldest") {
     chatQuery = query(chatRef, orderBy("timestamp", "asc"));
   } else {
-    chatQuery = query(chatRef, orderBy("timestamp", "desc"));
+    chatQuery = query(chatRef, orderBy("timestamp", "desc")); // default
   }
 
-  unsubscribe = onSnapshot(chatQuery, async (snapshot) => {
+ unsubscribe = onSnapshot(chatQuery, async (snapshot) => {
+   
+    // 🔥 Auto open first chat BEFORE rendering UI
+  if (!receiverId && !snapshot.empty) {
+    const firstChatData = snapshot.docs[0].data();
+    const firstUserId = firstChatData.userId;
 
-    const frag = document.createDocumentFragment();
-    const renderedUserIds = new Set();
-
-    if (snapshot.empty) {
-      chatListContainer.innerHTML = "<p>No chats found.</p>";
-      return;
-    }
-
-    const userFetches = snapshot.docs.map(async (chatDoc) => {
-
-      const chatData = chatDoc.data();
-      const userId = chatData.userId;
-      if (!userId) return;
-
-      renderedUserIds.add(userId);
-
-      const userDoc = await getDoc(doc(db, "users", userId));
-      const userExists = userDoc.exists();
-
-      const name = userExists
-        ? window.formatChatName(userDoc.data().name)
-        : "Deleted User";
-
-      const image =
-        userDoc.data()?.profileImage?.trim() || "/default-avatar.png";
-
-      const userSlug = encodeURIComponent(
-        name.toLowerCase().trim().replace(/\s+/g, "-")
-      );
-
-      const unreadSnap = await getDocs(
-        query(
-          collection(db, "conversations", chatData.conversationId, "messages"),
-          where("receiverId", "==", senderId),
-          where("read", "==", false)
-        )
-      );
-
-      const isActive = userId === receiverId;
-
-      const wrapper = document.createElement("div");
-      wrapper.className = `chat-item-wrapper ${isActive ? "active-chat" : ""}`;
-
-      wrapper.innerHTML = `
-        <a href="#" class="chat-item" data-user="${userId}" data-slug="${userSlug}">
-          <img src="${image}" class="profile-pic"/>
-          <span>${name}</span>
-          ${
-            unreadSnap.size > 0
-              ? `<span class="msg-count-badge">${unreadSnap.size}</span>`
-              : ""
-          }
-        </a>
-      `;
-
-      frag.appendChild(wrapper);
-
-    });
-
-    await Promise.all(userFetches);
-
-    chatListContainer.innerHTML = "";
-    chatListContainer.appendChild(frag);
-
-    attachChatClickEvents();
-
-    // 🔥 Auto open first chat if none selected
-    if (!receiverId && snapshot.docs.length > 0) {
-      const firstUserId = snapshot.docs[0].data().userId;
-
+    if (firstUserId) {
       const firstUserDoc = await getDoc(doc(db, "users", firstUserId));
-      const firstUserName = window.formatChatName(firstUserDoc.data().name);
-      const firstSlug = encodeURIComponent(
-        firstUserName.toLowerCase().trim().replace(/\s+/g, "-")
-      );
 
-      history.replaceState({}, "", `/conversation?user=${firstSlug}`);
+      if (firstUserDoc.exists()) {
+        const firstUserName = window.formatChatName(firstUserDoc.data().name);
+        const firstSlug = encodeURIComponent(
+          firstUserName.toLowerCase().trim().replace(/\s+/g, "-")
+        );
 
-      openChat(firstUserId);
+        // use replace so browser doesn't flicker
+        window.location.replace(`/conversation?user=${firstSlug}`);
+        return;
+      }
+    }
+  }
+   
+  const frag = document.createDocumentFragment();
+  const renderedUserIds = new Set();
+
+  // Only show "No chats found" message temporarily
+  if (snapshot.empty) {
+    chatListContainer.innerHTML = "<p>No chats found.</p>";
+  }
+  const userFetches = snapshot.docs.map(async (chatDoc) => {
+    const chatData = chatDoc.data();
+    const userId = chatData.userId;
+    if (!userId) return;
+
+    const requestRef = doc(db, "users", senderId, "requests", userId);
+    const requestSnap = await getDoc(requestRef);
+    if (requestSnap.exists()) return;
+
+    renderedUserIds.add(userId);
+
+    const userDoc = await getDoc(doc(db, "users", userId));
+    const userExists = userDoc.exists();
+    const name = userExists ? window.formatChatName(userDoc.data().name) : "Deleted User";
+    const image = userDoc.data()?.profileImage?.trim() || "/default-avatar.png";
+
+    const userSlug = encodeURIComponent(name.toLowerCase().trim().replace(/\s+/g, "-"));
+    const slugKey = `nameToId:${userSlug}`;
+    if (!sessionStorage.getItem(slugKey) && userExists) {
+      sessionStorage.setItem(slugKey, userId);
     }
 
+    const unreadSnap = await getDocs(
+      query(
+        collection(db, "conversations", chatData.conversationId, "messages"),
+        where("receiverId", "==", senderId),
+        where("read", "==", false)
+      )
+    );
+
+    const isActive = userId === receiverId;
+    const wrapper = document.createElement("div");
+    wrapper.className = `chat-item-wrapper ${isActive ? "active-chat" : ""}`;
+    wrapper.innerHTML = `
+      <a href="/conversation?user=${userSlug}" class="chat-item">
+        <img src="${image}" class="profile-pic" />
+        <span >${name}</span>
+        ${unreadSnap.size > 0 ? `<span class="msg-count-badge">${unreadSnap.size}</span>` : ""}
+      </a>`;
+
+    frag.appendChild(wrapper);
+
+    if (isActive) {
+      const bookBtn = document.querySelector('.bookbutton');
+      bookBtn.innerHTML = `
+        <a href="" id="bookFreelancer" class="button is-small" data-id="${userId}" data-ms-content="clients">
+          Book Freelancer
+        </a>`;
+      messagewrapper.appendChild(bookBtn);
+
+      const freelancerBtn = document.getElementById('bookFreelancer');
+      if (freelancerBtn) {
+        freelancerBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          const userId = freelancerBtn.getAttribute('data-id');
+
+          fetch(`https://api-ten-gamma-86.vercel.app/api/proxy-freelancer?id=${userId}`)
+            .then((res) => res.json())
+            .then((data) => {
+           
+              const freelancer = data?.fieldData;
+              if (freelancer && freelancer["user-id"]) {
+                const name = freelancer["full-name"] || "Unknown";
+                const rate = freelancer.rate || "0";
+                const slug = freelancer.slug;
+                freelancerBtn.setAttribute("data-name", name);
+                freelancerBtn.setAttribute("data-rate", rate);
+                window.location.href = `${window.location.origin}/freelancers/${slug}`;
+              } else {
+                alert("Freelancer not valid or data not found.");
+              }
+            })
+            .catch((err) => {
+              alert("An error occurred while fetching freelancer data.");
+            });
+        });
+      }
+    }
   });
+
+  await Promise.all(userFetches);
+
+  // clear container only once
+  chatListContainer.innerHTML = "";
+  chatListContainer.appendChild(frag);
+   
+  // 🔥 FIX: show receiver if not already rendered
+  if (!renderedUserIds.has(receiverId)) {
+    try {
+      const newUserDoc = await getDoc(doc(db, "users", receiverId));
+      if (newUserDoc.exists()) {
+        const newUserData = newUserDoc.data();
+        const newName = window.formatChatName(newUserData.name) || "Unknown";
+        const newImage = newUserData.profileImage?.trim() || "/default-avatar.png";
+        const newUserSlug = encodeURIComponent(newName.toLowerCase().trim().replace(/\s+/g, "-"));
+
+        const newWrapper = document.createElement("div");
+        newWrapper.className = "chat-item-wrapper active-chat";
+        newWrapper.innerHTML = `
+          <a href="/conversation?user=${newUserSlug}" class="chat-item">
+            <img src="${newImage}" class="profile-pic" />
+            <span>${newName}</span>
+          </a>`;
+
+        chatListContainer.prepend(newWrapper);
+      }
+    } catch (error) {
+      console.error("Error fetching new user:", error);
+    }
+  }
+});
+
 };
 
 loadChats();
-
-function attachChatClickEvents() {
-
-  document.querySelectorAll(".chat-item").forEach((item) => {
-
-    item.addEventListener("click", (e) => {
-
-      e.preventDefault();
-
-      const newUserId = item.dataset.user;
-      const slug = item.dataset.slug;
-
-      receiverId = newUserId;
-
-      history.pushState({}, "", `/conversation?user=${slug}`);
-
-      document.querySelectorAll(".chat-item-wrapper").forEach((el) => {
-        el.classList.remove("active-chat");
-      });
-
-      item.closest(".chat-item-wrapper").classList.add("active-chat");
-
-      openChat(newUserId);
-
-    });
-
-  });
-
-}
-
-function openChat(userId) {
-
-  receiverId = userId;
-
-  const conversationId = [senderId, receiverId].sort().join("_");
-
-  if (messageUnsubscribe) messageUnsubscribe();
-
-  const q = query(
-    collection(db, "conversations", conversationId, "messages"),
-    orderBy("timestamp", "asc")
-  );
-
-  messageUnsubscribe = onSnapshot(q, (snapshot) => {
-
-    messagesContainer.innerHTML = "";
-
-    snapshot.forEach((doc) => {
-
-      const msg = doc.data();
-
-      const div = document.createElement("div");
-
-      div.className =
-        msg.senderId === senderId ? "message sent" : "message received";
-
-      div.innerText = msg.text;
-
-      messagesContainer.appendChild(div);
-
-    });
-
-  });
-
-}
 
   
   
