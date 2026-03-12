@@ -790,7 +790,6 @@ const loadChats = (sortType = "recent") => {
 
     if (!firstUserId) continue;
 
-    // 🔹 check if this user is still in pending requests
     const requestRef = doc(db, "users", senderId, "requests", firstUserId);
     const requestSnap = await getDoc(requestRef);
 
@@ -801,16 +800,11 @@ const loadChats = (sortType = "recent") => {
 
     if (firstUserDoc.exists()) {
 
-      const firstUserName = window.formatChatName(firstUserDoc.data().name);
+      if (!activeReceiverId) {
+        openChat(firstUserId);
+        activeReceiverId = firstUserId;
+      }
 
-      const firstSlug = encodeURIComponent(
-        firstUserName.toLowerCase().trim().replace(/\s+/g, "-")
-      );
-
-      if (!activeReceiverId && !snapshot.empty) {
-  const firstUserId = snapshot.docs[0].data().userId;
-  openChat(firstUserId);
-}
       return;
     }
   }
