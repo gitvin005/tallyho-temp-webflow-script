@@ -736,32 +736,62 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
   let activeReceiverId = null;
 
   async function openChat(userId) {
-    receiverId = userId;
-    activeReceiverId = userId;
 
-     conversationId = [senderId, userId].sort().join("_");
+  receiverId = userId;
+  activeReceiverId = userId;
 
-    if (activeConversationUnsub) {
-      activeConversationUnsub(); // stop previous listener
+  conversationId = [senderId, userId].sort().join("_");
+
+  if (activeConversationUnsub) {
+    activeConversationUnsub();
+  }
+
+  messagesContainer.innerHTML = "<p>Loading...</p>";
+
+  const q = query(
+    collection(db, "conversations", conversationId, "messages"),
+    orderBy("timestamp", "asc")
+  );
+
+  activeConversationUnsub = onSnapshot(q, async (snapshot) => {
+
+    messagesContainer.innerHTML = "";
+
+    snapshot.forEach((docSnap) => {
+      appendMessage(docSnap.data(), senderId);
+    });
+
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    // 🔹 check if this chat is a request
+    const isRequest = await isRequestUser(userId);
+
+    const actionBox = document.getElementById("requestActionBox");
+
+    if (isRequest) {
+
+      actionBox.innerHTML = `
+        <div class="request-actions">
+          <button id="acceptRequestBtn">Accept</button>
+          <button id="rejectRequestBtn">Reject</button>
+        </div>
+      `;
+
+      document
+        .getElementById("acceptRequestBtn")
+        .addEventListener("click", () => acceptRequest(userId));
+
+      document
+        .getElementById("rejectRequestBtn")
+        .addEventListener("click", () => rejectRequest(userId));
+
+    } else {
+      actionBox.innerHTML = "";
     }
 
-    messagesContainer.innerHTML = "<p>Loading...</p>";
+  });
 
-    const q = query(
-      collection(db, "conversations", conversationId, "messages"),
-      orderBy("timestamp", "asc"),
-    );
-
-    activeConversationUnsub = onSnapshot(q, (snapshot) => {
-      messagesContainer.innerHTML = "";
-
-      snapshot.forEach((docSnap) => {
-        appendMessage(docSnap.data(), senderId);
-      });
-
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    });
-  }
+}
 
   const loadChats = (sortType = "recent") => {
     if (unsubscribe) unsubscribe();
@@ -981,6 +1011,40 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
     const sortType = e.target.value;
     loadChats(sortType);
   });
+
+  async function isRequestUser(userId) {
+  const requestRef = doc(db, "users", senderId, "requests", userId);
+  const snap = await getDoc(requestRef);
+  return snap.exists();
+}
+
+async function acceptRequest(userId) {
+
+  const convoId = [senderId, userId].sort().join("_");
+
+  await Promise.all([
+    setDoc(doc(db, "users", senderId, "chats", userId), {
+      conversationId: convoId,
+      userId,
+      timestamp: serverTimestamp()
+    }),
+
+    setDoc(doc(db, "users", userId, "chats", senderId), {
+      conversationId: convoId,
+      userId: senderId,
+      timestamp: serverTimestamp()
+    }),
+
+    deleteDoc(doc(db, "users", senderId, "requests", userId))
+  ]);
+
+}
+
+async function rejectRequest(userId) {
+
+  await deleteDoc(doc(db, "users", senderId, "requests", userId));
+
+}
 
   onSnapshot(
     query(
