@@ -786,6 +786,7 @@ const loadChats = (sortType = "recent") => {
 
     const userDoc = await getDoc(doc(db, "users", userId));
     const userExists = userDoc.exists();
+    console.log(userDoc.data());
     const name = userExists ? window.formatChatName(userDoc.data().name) : "Deleted User";
     const image = userDoc.data()?.profileImage?.trim() || "/default-avatar.png";
 
