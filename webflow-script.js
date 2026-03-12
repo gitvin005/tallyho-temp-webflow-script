@@ -469,7 +469,7 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
 
 
 const userSlug = new URLSearchParams(window.location.search).get("user");
-const receiverId = sessionStorage.getItem(`nameToId:${userSlug}`);
+let receiverId = sessionStorage.getItem(`nameToId:${userSlug}`);
   const conversationId = receiverId
     ? [senderId, receiverId].sort().join("_")
     : null;
@@ -729,20 +729,21 @@ const sendMessage = async () => {
   chatListContainer.innerHTML = "<p>Loading...</p>";
   
 
-  let activeConversationUnsub = null;
+let activeConversationUnsub = null;
 let activeReceiverId = null;
 
 async function openChat(userId) {
 
+  receiverId = userId;
   activeReceiverId = userId;
+
   const conversationId = [senderId, userId].sort().join("_");
 
-  // stop previous listener
   if (activeConversationUnsub) {
-    activeConversationUnsub();
+    activeConversationUnsub(); // stop previous listener
   }
 
-  messagesContainer.innerHTML = "<p>Loading chat...</p>";
+  messagesContainer.innerHTML = "<p>Loading...</p>";
 
   const q = query(
     collection(db, "conversations", conversationId, "messages"),
@@ -753,19 +754,11 @@ async function openChat(userId) {
 
     messagesContainer.innerHTML = "";
 
-    snapshot.forEach((doc) => {
-      appendMessage(doc.data(), senderId);
+    snapshot.forEach((docSnap) => {
+      appendMessage(docSnap.data(), senderId);
     });
 
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-    snapshot.docs.forEach(async (docSnap) => {
-      const data = docSnap.data();
-
-      if (data.receiverId === senderId && !data.read) {
-        await updateDoc(docSnap.ref, { read: true });
-      }
-    });
 
   });
 
@@ -814,7 +807,10 @@ const loadChats = (sortType = "recent") => {
         firstUserName.toLowerCase().trim().replace(/\s+/g, "-")
       );
 
-      window.location.replace(`/conversation?user=${firstSlug}`);
+      if (!activeReceiverId && !snapshot.empty) {
+  const firstUserId = snapshot.docs[0].data().userId;
+  openChat(firstUserId);
+}
       return;
     }
   }
@@ -862,11 +858,11 @@ const loadChats = (sortType = "recent") => {
     const wrapper = document.createElement("div");
     wrapper.className = `chat-item-wrapper ${isActive ? "active-chat" : ""}`;
     wrapper.innerHTML = `
-      <a href="/conversation?user=${userSlug}" class="chat-item">
-        <img src="${image}" class="profile-pic" />
-        <span >${name}</span>
-        ${unreadSnap.size > 0 ? `<span class="msg-count-badge">${unreadSnap.size}</span>` : ""}
-      </a>`;
+    <a href="#" class="chat-item" data-user="${userId}" data-slug="${userSlug}">
+      <img src="${image}" class="profile-pic" />
+      <span>${name}</span>
+      ${unreadSnap.size > 0 ? `<span class="msg-count-badge">${unreadSnap.size}</span>` : ""}
+    </a>`;
 
     frag.appendChild(wrapper);
 
@@ -926,6 +922,28 @@ const loadChats = (sortType = "recent") => {
   // clear container only once
   chatListContainer.innerHTML = "";
   chatListContainer.appendChild(frag);
+
+  chatListContainer.querySelectorAll(".chat-item").forEach((item) => {
+
+    item.addEventListener("click", (e) => {
+  e.preventDefault();
+
+  const userId = item.dataset.user;
+  const slug = item.dataset.slug;
+
+  openChat(userId);
+
+  history.pushState(null, "", `/conversation?user=${slug}`);
+
+      document
+        .querySelectorAll(".chat-item-wrapper")
+        .forEach(el => el.classList.remove("active-chat"));
+
+      item.parentElement.classList.add("active-chat");
+
+    });
+
+  });
    
   // 🔥 FIX: show receiver if not already rendered
   if (!renderedUserIds.has(receiverId)) {
