@@ -1180,7 +1180,18 @@ async function acceptRequest(userId) {
     }),
     deleteDoc(doc(db, "users", senderId, "requests", userId)),
   ]);
+  
+  // Clear message view and reset state
+  document.getElementById("requestMessagesContainer").innerHTML = "<p>Request accepted</p>";
   document.getElementById("chatRequestActions").innerHTML = "";
+  
+  // Unsubscribe from the request conversation listener
+  if (requestConversationUnsub) {
+    requestConversationUnsub();
+    requestConversationUnsub = null;
+  }
+  activeRequestChat = null;
+  renderedMessageIds.clear();
 }
 
 // =======================
@@ -1189,8 +1200,13 @@ async function acceptRequest(userId) {
 
 async function rejectRequest(userId) {
   await deleteDoc(doc(db, "users", senderId, "requests", userId));
-  document.getElementById("chatRequestActions").innerHTML = "";
-  messagesContainer.innerHTML = "<p>Request rejected</p>";
+  document.getElementById("requestActionBox").innerHTML = "";
+  // Fix: use correct container ID
+  document.getElementById("requestMessagesContainer").innerHTML = "<p>Request rejected</p>";
+  
+  // Also reset active chat so it can be reopened fresh
+  activeRequestChat = null;
+  renderedMessageIds.clear();
 }
 
 // =======================
