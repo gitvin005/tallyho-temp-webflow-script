@@ -804,7 +804,7 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
       orderBy("timestamp", "asc"),
     );
 
-    activeConversationUnsub = onSnapshot(q, (snapshot) => {
+    activeConversationUnsub = onSnapshot(q, async  (snapshot) => {
       messagesContainer.innerHTML = "";
 
       snapshot.forEach((docSnap) => {
