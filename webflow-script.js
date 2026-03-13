@@ -1484,19 +1484,17 @@ async function listenUnreadMessagesCount() {
   onSnapshot(userChatsRef, (chatSnapshot) => {
 
     notificationList.innerHTML = "";
-
     let totalUnread = 0;
-    const senderMap = {}; // group messages by sender
+
+    const senderMap = {};
+    const listeners = [];
 
     chatSnapshot.forEach((chatDoc) => {
 
       const { conversationId } = chatDoc.data();
       if (!conversationId) return;
 
-      const messagesRef = collection(
-        db,
-        `conversations/${conversationId}/messages`
-      );
+      const messagesRef = collection(db, `conversations/${conversationId}/messages`);
 
       const unreadQuery = query(
         messagesRef,
@@ -1504,7 +1502,7 @@ async function listenUnreadMessagesCount() {
         where("receiverId", "==", loggedUserId)
       );
 
-      onSnapshot(unreadQuery, async (unreadSnapshot) => {
+      const unsub = onSnapshot(unreadQuery, (unreadSnapshot) => {
 
         unreadSnapshot.forEach((docSnap) => {
 
@@ -1515,8 +1513,7 @@ async function listenUnreadMessagesCount() {
 
           if (!senderMap[senderId]) {
             senderMap[senderId] = {
-              count: 0,
-              lastMessage: msg
+              count: 0
             };
           }
 
@@ -1524,61 +1521,60 @@ async function listenUnreadMessagesCount() {
 
         });
 
-        notificationList.innerHTML = "";
-
-        // render grouped notifications
-        for (const senderId in senderMap) {
-
-          const data = senderMap[senderId];
-
-          const userDoc = await getDoc(doc(db, "users", senderId));
-
-          const senderName = userDoc.exists()
-            ? window.formatChatName(userDoc.data().name)
-            : "User";
-
-          const senderImage =
-            userDoc.data()?.profileImage || "/default-avatar.png";
-
-          const item = document.createElement("div");
-          item.className = "notification-item unread";
-
-          item.innerHTML = `
-          
-          <div class="notification">
-
-            <img src="${senderImage}" class="notif-avatar"/>
-
-            <div>
-
-              <strong>${senderName}</strong>
-
-              <p>
-                You got ${data.count} new message${
-            data.count > 1 ? "s" : ""
-          } from ${senderName}
-              </p>
-
-            </div>
-
-          </div>
-          `;
-
-          
-
-          notificationList.appendChild(item);
-        }
-
-        const displayCount = totalUnread > 9 ? "9+" : totalUnread;
-
-        if (badge) {
-          badge.innerText = displayCount;
-          badge.style.display = totalUnread > 0 ? "inline-block" : "none";
-        }
-
+        renderNotifications();
       });
 
+      listeners.push(unsub);
+
     });
+
+    async function renderNotifications() {
+
+      notificationList.innerHTML = "";
+
+      for (const senderId in senderMap) {
+
+        const data = senderMap[senderId];
+
+        const userDoc = await getDoc(doc(db, "users", senderId));
+
+        const senderName = userDoc.exists()
+          ? window.formatChatName(userDoc.data().name)
+          : "User";
+
+        const senderImage =
+          userDoc.data()?.profileImage || "/default-avatar.png";
+
+        const item = document.createElement("div");
+        item.className = "notification-item unread";
+
+        item.innerHTML = `
+        <div class="notification">
+          <img src="${senderImage}" class="notif-avatar"/>
+          <div>
+            <strong>${senderName}</strong>
+            <p>
+              You got ${data.count} new message${data.count > 1 ? "s" : ""} from ${senderName}
+            </p>
+          </div>
+        </div>
+        `;
+
+        item.addEventListener("click", () => {
+          window.location.href = `/messages?user=${senderId}`;
+        });
+
+        notificationList.appendChild(item);
+      }
+
+      const displayCount = totalUnread > 9 ? "9+" : totalUnread;
+
+      if (badge) {
+        badge.innerText = displayCount;
+        badge.style.display = totalUnread > 0 ? "inline-block" : "none";
+      }
+
+    }
 
   });
 
