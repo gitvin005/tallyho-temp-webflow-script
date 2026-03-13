@@ -1392,6 +1392,57 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 /* conversation tab badge */
 
+async function listenUnreadMessagesCountTab() {
+
+  const loggedUserId = await getLoginId();
+  if (!loggedUserId) return;
+
+  const badge = document.getElementById("notification-badge");
+
+
+  const userChatsRef = collection(db, `users/${loggedUserId}/chats`);
+
+  onSnapshot(userChatsRef, (chatSnapshot) => {
+
+    let totalUnread = 0;
+
+    chatSnapshot.forEach((chatDoc) => {
+
+      const { conversationId, userId } = chatDoc.data();
+      if (!conversationId) return;
+
+      const messagesRef = collection(
+        db,
+        `conversations/${conversationId}/messages`
+      );
+
+      const unreadQuery = query(
+        messagesRef,
+        where("read", "==", false),
+        where("receiverId", "==", loggedUserId)
+      );
+
+      onSnapshot(unreadQuery, async (unreadSnapshot) => {
+
+        totalUnread += unreadSnapshot.size;
+
+        const displayCount = totalUnread > 9 ? "9+" : totalUnread;
+
+        if (badge) {
+          badge.innerText = displayCount;
+          badge.style.display = totalUnread > 0 ? "inline-block" : "none";
+        }
+
+      });
+
+    });
+
+  });
+
+}
+
+listenUnreadMessagesCountTab()
+
 async function listenUnreadMessagesCount() {
   const loggedUserId = await getLoginId();
   if (!loggedUserId) return;
