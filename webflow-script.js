@@ -1165,11 +1165,20 @@ async function openRequestChat(userId) {
   }
 }
 
+
+
 // =======================
 // ACCEPT REQUEST
 // =======================
 
 async function acceptRequest(userId) {
+  if (requestConversationUnsub) {
+    requestConversationUnsub();
+    requestConversationUnsub = null;
+  }
+  activeRequestChat = null;
+  renderedMessageIds.clear();
+
   const convoId = [senderId, userId].sort().join("_");
   await Promise.all([
     setDoc(doc(db, "users", senderId, "chats", userId), {
@@ -1179,19 +1188,14 @@ async function acceptRequest(userId) {
       conversationId: convoId, userId: senderId, timestamp: serverTimestamp(),
     }),
     deleteDoc(doc(db, "users", senderId, "requests", userId)),
+    deleteDoc(doc(db, "users", userId, "requests", senderId)),
+
+    // Notify the requester their request was accepted
+    sendNotification(userId, "request_accepted", senderId),
   ]);
-  
-  // Clear message view and reset state
+
   document.getElementById("requestMessagesContainer").innerHTML = "<p>Request accepted</p>";
-  document.getElementById("chatRequestActions").innerHTML = "";
-  
-  // Unsubscribe from the request conversation listener
-  if (requestConversationUnsub) {
-    requestConversationUnsub();
-    requestConversationUnsub = null;
-  }
-  activeRequestChat = null;
-  renderedMessageIds.clear();
+  document.getElementById("requestActionBox").innerHTML = "";
 }
 
 // =======================
@@ -1199,14 +1203,25 @@ async function acceptRequest(userId) {
 // =======================
 
 async function rejectRequest(userId) {
-  await deleteDoc(doc(db, "users", senderId, "requests", userId));
-  document.getElementById("requestActionBox").innerHTML = "";
-  // Fix: use correct container ID
-  document.getElementById("requestMessagesContainer").innerHTML = "<p>Request rejected</p>";
-  
-  // Also reset active chat so it can be reopened fresh
+  if (requestConversationUnsub) {
+    requestConversationUnsub();
+    requestConversationUnsub = null;
+  }
   activeRequestChat = null;
   renderedMessageIds.clear();
+
+  await Promise.all([
+    deleteDoc(doc(db, "users", senderId, "requests", userId)),
+    deleteDoc(doc(db, "users", senderId, "chats", userId)),
+    deleteDoc(doc(db, "users", userId, "chats", senderId)),
+    deleteDoc(doc(db, "users", userId, "requests", senderId)),
+
+    // Notify the requester their request was rejected
+    sendNotification(userId, "request_rejected", senderId),
+  ]);
+
+  document.getElementById("requestMessagesContainer").innerHTML = "<p>Request rejected</p>";
+  document.getElementById("requestActionBox").innerHTML = "";
 }
 
 // =======================
@@ -1283,6 +1298,73 @@ onSnapshot(
     requestListContainer.appendChild(frag);
   }
 );
+
+
+// clinet notfication request
+
+async function sendNotification(toUserId, type, fromUserId) {
+  const notifRef = doc(collection(db, "users", toUserId, "notifications"));
+  await setDoc(notifRef, {
+    type,        // "request_accepted" | "request_rejected"
+    fromUserId,
+    read: false,
+    timestamp: serverTimestamp(),
+  });
+}
+
+function listenForNotifications(currentUserId) {
+  const q = query(
+    collection(db, "users", currentUserId, "notifications"),
+    where("read", "==", false),
+    orderBy("timestamp", "desc")
+  );
+
+  onSnapshot(q, async (snapshot) => {
+    for (const change of snapshot.docChanges()) {
+      if (change.type !== "added") continue;
+
+      const data = change.doc.data();
+      const notifId = change.doc.id;
+
+      // Fetch the other user's name for the message
+      const userDoc = await getDoc(doc(db, "users", data.fromUserId));
+      const name = userDoc.exists()
+        ? window.formatChatName(userDoc.data().name)
+        : "Someone";
+
+      if (data.type === "request_accepted") {
+        showToast(`✅ ${name} accepted your chat request!`, "success");
+      } else if (data.type === "request_rejected") {
+        showToast(`❌ ${name} declined your chat request.`, "error");
+      }
+
+      // Mark as read so it doesn't show again
+      await updateDoc(
+        doc(db, "users", currentUserId, "notifications", notifId),
+        { read: true }
+      );
+    }
+  });
+}
+
+function showToast(message, type = "info") {
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  // Animate in
+  requestAnimationFrame(() => toast.classList.add("toast-visible"));
+
+  // Auto remove after 4s
+  setTimeout(() => {
+    toast.classList.remove("toast-visible");
+    toast.addEventListener("transitionend", () => toast.remove());
+  }, 4000);
+}
+
+// Call this after senderId is defined
+listenForNotifications(senderId);
 
 
   // Lightbox Preview on image click
