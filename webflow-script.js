@@ -831,7 +831,6 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
     });
   }
 
-  window.openChat = openChat;
 
   const loadChats = (sortType = "recent") => {
     if (unsubscribe) unsubscribe();
@@ -1155,6 +1154,49 @@ async function rejectRequest(userId) {
 
 }
 
+async function openRequestChat(userId) {
+
+  const conversationId = [senderId, userId].sort().join("_");
+
+  const requestMessagesContainer = document.getElementById("requestMessagesContainer");
+
+  if (!requestMessagesContainer) return;
+
+  requestMessagesContainer.innerHTML = "<p>Loading messages...</p>";
+
+  const q = query(
+    collection(db, "conversations", conversationId, "messages"),
+    orderBy("timestamp", "asc")
+  );
+
+  onSnapshot(q, (snapshot) => {
+
+    requestMessagesContainer.innerHTML = "";
+
+    if (snapshot.empty) {
+      requestMessagesContainer.innerHTML = "<p>No messages yet</p>";
+      return;
+    }
+
+    snapshot.forEach((docSnap) => {
+
+      const msg = docSnap.data();
+
+      const div = document.createElement("div");
+      div.className = msg.senderId === senderId ? "my-message" : "their-message";
+
+      div.innerText = msg.text || msg.message || "";
+
+      requestMessagesContainer.appendChild(div);
+
+    });
+
+    requestMessagesContainer.scrollTop = requestMessagesContainer.scrollHeight;
+
+  });
+
+}
+
       await Promise.all(requests);
       requestListContainer.appendChild(frag);
 
@@ -1166,7 +1208,7 @@ async function rejectRequest(userId) {
           console.log(userId)
 
           // open conversation
-          window.openChat(userId);
+          openRequestChat(userId);
 
           // show accept/reject buttons inside chat
           showRequestActions(userId);
