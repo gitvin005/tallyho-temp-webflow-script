@@ -1567,7 +1567,7 @@ async function listenUnreadMessagesCount() {
   }
 }
 
-listenUnreadMessagesCount();
+
 
 // finance page =============
 
