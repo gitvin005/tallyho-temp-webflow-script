@@ -1153,6 +1153,7 @@ async function rejectRequest(userId) {
   messagesContainer.innerHTML = "<p>Request rejected</p>";
 
 }
+let requestConversationUnsub = null;
 
 async function openRequestChat(userId) {
 
