@@ -1162,14 +1162,14 @@ async function openRequestChat(userId) {
 
   if (!requestMessagesContainer) return;
 
-  requestMessagesContainer.innerHTML = "<p>Loading messages...</p>";
+  requestMessagesContainer.innerHTML = "<p>Loading...</p>";
 
   const q = query(
     collection(db, "conversations", conversationId, "messages"),
     orderBy("timestamp", "asc")
   );
 
-  onSnapshot(q, (snapshot) => {
+  onSnapshot(q, async (snapshot) => {
 
     requestMessagesContainer.innerHTML = "";
 
@@ -1178,20 +1178,55 @@ async function openRequestChat(userId) {
       return;
     }
 
-    snapshot.forEach((docSnap) => {
+    for (const docSnap of snapshot.docs) {
 
-      const msg = docSnap.data();
+      const data = docSnap.data();
+      const timestamp = data.timestamp?.toDate();
 
-      const div = document.createElement("div");
-      div.className = msg.senderId === senderId ? "my-message" : "their-message";
+      // get sender profile
+      const userDoc = await getDoc(doc(db, "users", data.senderId));
+      const senderImage = userDoc.data()?.profileImage || "/default-avatar.png";
 
-      div.innerText = msg.text || msg.message || "";
+      const msgDiv = document.createElement("div");
+      msgDiv.className = "message-item";
 
-      requestMessagesContainer.appendChild(div);
+      msgDiv.innerHTML = `
+      
+      <div class="message-header">
+        <img src="${data.profileImage || senderImage}" class="msg-profile-pic"/>
 
-    });
+        <div>
+          <strong>${window.formatChatName(data.name || userDoc.data()?.name)}</strong>
+          <span class="time">
+          ${
+            timestamp?.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit"
+            }) || "Now"
+          }
+          </span>
+        </div>
+      </div>
 
-    requestMessagesContainer.scrollTop = requestMessagesContainer.scrollHeight;
+      <div class="message-body">
+
+        ${data.text ? `<p class="msg-text">${data.text}</p>` : ""}
+
+        ${
+          data.image
+            ? `<img src="${data.image}" class="chat-image"/>`
+            : ""
+        }
+
+      </div>
+      `;
+
+      requestMessagesContainer.appendChild(msgDiv);
+
+    }
+
+    requestMessagesContainer.scrollTop =
+      requestMessagesContainer.scrollHeight;
 
   });
 
