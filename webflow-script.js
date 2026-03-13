@@ -735,11 +735,63 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
   let activeConversationUnsub = null;
   let activeReceiverId = null;
 
+  function updateBookFreelancer(userId) {
+
+  const bookBtn = document.querySelector(".bookbutton");
+
+  if (!bookBtn) return;
+
+  bookBtn.innerHTML = `
+    <a href="#" data-ms-content="clients" id="bookFreelancer" class="button is-small" data-id="${userId}">
+      Book Freelancer
+    </a>
+  `;
+
+  const freelancerBtn = document.getElementById("bookFreelancer");
+
+  freelancerBtn.addEventListener("click", function (e) {
+    e.preventDefault();
+
+    const userId = this.dataset.id;
+
+    fetch(`https://api-ten-gamma-86.vercel.app/api/proxy-freelancer?id=${userId}`)
+      .then((res) => res.json())
+      .then((data) => {
+
+        const freelancer = data?.fieldData;
+
+        if (freelancer && freelancer["user-id"]) {
+
+          const name = freelancer["full-name"] || "Unknown";
+          const rate = freelancer.rate || "0";
+          const id = freelancer["user-id"];
+
+          const baseUrl = window.location.origin;
+
+          window.location.href =
+            `${baseUrl}/book-now?userId=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&rate=${encodeURIComponent(rate)}`;
+
+        } else {
+          alert("Freelancer not valid or data not found.");
+        }
+
+      })
+      .catch((err) => {
+        console.error(err);
+        alert("Error fetching freelancer data.");
+      });
+
+  });
+
+}
+
   async function openChat(userId) {
     receiverId = userId;
     activeReceiverId = userId;
 
      conversationId = [senderId, userId].sort().join("_");
+
+     updateBookFreelancer(userId);
 
     if (activeConversationUnsub) {
       activeConversationUnsub(); // stop previous listener
@@ -933,6 +985,7 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
           const slug = item.dataset.slug;
 
           openChat(userId);
+          updateBookFreelancer(userId); 
 
           history.pushState(null, "", `/conversation?user=${slug}`);
 
