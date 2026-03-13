@@ -1362,6 +1362,9 @@ onSnapshot(
   });
 })();
 
+
+
+
 const loadNotifications = async () => {
   const userId = await getLoginId();
   const notificationList = document.getElementById("notification-list");
@@ -1471,21 +1474,27 @@ async function listenUnreadMessagesCount() {
   const loggedUserId = await getLoginId();
   if (!loggedUserId) return;
 
+  const notificationList = document.getElementById("notification-list");
   const badge = document.getElementById("notification-badge");
+
+  if (!notificationList) return;
 
   const userChatsRef = collection(db, `users/${loggedUserId}/chats`);
 
-  // listen to chat list changes
   onSnapshot(userChatsRef, (chatSnapshot) => {
 
+    notificationList.innerHTML = "";
     let totalUnread = 0;
 
     chatSnapshot.forEach((chatDoc) => {
 
-      const { conversationId } = chatDoc.data();
+      const { conversationId, userId } = chatDoc.data();
       if (!conversationId) return;
 
-      const messagesRef = collection(db, `conversations/${conversationId}/messages`);
+      const messagesRef = collection(
+        db,
+        `conversations/${conversationId}/messages`
+      );
 
       const unreadQuery = query(
         messagesRef,
@@ -1493,10 +1502,54 @@ async function listenUnreadMessagesCount() {
         where("receiverId", "==", loggedUserId)
       );
 
-      // listen to unread messages
-      onSnapshot(unreadQuery, (unreadSnapshot) => {
+      onSnapshot(unreadQuery, async (unreadSnapshot) => {
 
         totalUnread += unreadSnapshot.size;
+
+        for (const docSnap of unreadSnapshot.docs) {
+
+          const msg = docSnap.data();
+
+          // get sender profile
+          const userDoc = await getDoc(doc(db, "users", msg.senderId));
+
+          const senderName = userDoc.exists()
+            ? window.formatChatName(userDoc.data().name)
+            : "User";
+
+          const senderImage =
+            userDoc.data()?.profileImage || "/default-avatar.png";
+
+          const item = document.createElement("div");
+          item.className = "notification-item unread";
+
+          item.innerHTML = `
+          
+          <div class="notification">
+
+            <img src="${senderImage}" class="notif-avatar"/>
+
+            <div class="notif-content">
+
+              <strong>${senderName}</strong>
+
+              <p>You got a new message from ${senderName}</p>
+
+            </div>
+
+          </div>
+          `;
+
+          item.addEventListener("click", () => {
+
+            // open chat page
+            window.location.href = `/messages?user=${msg.senderId}`;
+
+          });
+
+          notificationList.appendChild(item);
+
+        }
 
         const displayCount = totalUnread > 9 ? "9+" : totalUnread;
 
@@ -1508,6 +1561,11 @@ async function listenUnreadMessagesCount() {
       });
 
     });
+
+    if (notificationList.innerHTML === "") {
+      notificationList.innerHTML =
+        "<div class='no-notification'>Nothing Found</div>";
+    }
 
   });
 
