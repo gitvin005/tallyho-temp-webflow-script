@@ -1564,9 +1564,7 @@ async function listenUnreadMessagesCount() {
           </div>
           `;
 
-          item.addEventListener("click", () => {
-            window.location.href = `/messages?user=${senderId}`;
-          });
+          
 
           notificationList.appendChild(item);
         }
