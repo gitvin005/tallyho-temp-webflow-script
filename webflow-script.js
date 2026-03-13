@@ -1484,11 +1484,13 @@ async function listenUnreadMessagesCount() {
   onSnapshot(userChatsRef, (chatSnapshot) => {
 
     notificationList.innerHTML = "";
+
     let totalUnread = 0;
+    const senderMap = {}; // group messages by sender
 
     chatSnapshot.forEach((chatDoc) => {
 
-      const { conversationId, userId } = chatDoc.data();
+      const { conversationId } = chatDoc.data();
       if (!conversationId) return;
 
       const messagesRef = collection(
@@ -1504,14 +1506,32 @@ async function listenUnreadMessagesCount() {
 
       onSnapshot(unreadQuery, async (unreadSnapshot) => {
 
-        totalUnread += unreadSnapshot.size;
-
-        for (const docSnap of unreadSnapshot.docs) {
+        unreadSnapshot.forEach((docSnap) => {
 
           const msg = docSnap.data();
+          const senderId = msg.senderId;
 
-          // get sender profile
-          const userDoc = await getDoc(doc(db, "users", msg.senderId));
+          totalUnread++;
+
+          if (!senderMap[senderId]) {
+            senderMap[senderId] = {
+              count: 0,
+              lastMessage: msg
+            };
+          }
+
+          senderMap[senderId].count++;
+
+        });
+
+        notificationList.innerHTML = "";
+
+        // render grouped notifications
+        for (const senderId in senderMap) {
+
+          const data = senderMap[senderId];
+
+          const userDoc = await getDoc(doc(db, "users", senderId));
 
           const senderName = userDoc.exists()
             ? window.formatChatName(userDoc.data().name)
@@ -1529,11 +1549,15 @@ async function listenUnreadMessagesCount() {
 
             <img src="${senderImage}" class="notif-avatar"/>
 
-            <div class="notif-content">
+            <div>
 
               <strong>${senderName}</strong>
 
-              <p>You got a new message from ${senderName}</p>
+              <p>
+                You got ${data.count} new message${
+            data.count > 1 ? "s" : ""
+          } from ${senderName}
+              </p>
 
             </div>
 
@@ -1541,14 +1565,10 @@ async function listenUnreadMessagesCount() {
           `;
 
           item.addEventListener("click", () => {
-
-            // open chat page
-            window.location.href = `/messages?user=${msg.senderId}`;
-
+            window.location.href = `/messages?user=${senderId}`;
           });
 
           notificationList.appendChild(item);
-
         }
 
         const displayCount = totalUnread > 9 ? "9+" : totalUnread;
@@ -1561,11 +1581,6 @@ async function listenUnreadMessagesCount() {
       });
 
     });
-
-    if (notificationList.innerHTML === "") {
-      notificationList.innerHTML =
-        "<div class='no-notification'>Nothing Found</div>";
-    }
 
   });
 
