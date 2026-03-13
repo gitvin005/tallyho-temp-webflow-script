@@ -812,6 +812,20 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
       });
 
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      // ✅ MARK MESSAGES AS READ
+      const unreadQuery = query(
+        collection(db, "conversations", conversationId, "messages"),
+        where("receiverId", "==", senderId),
+        where("read", "==", false)
+      );
+
+      const unreadSnap = await getDocs(unreadQuery);
+
+      unreadSnap.forEach(async (docSnap) => {
+        await updateDoc(docSnap.ref, { read: true });
+      });
+
     });
   }
 
