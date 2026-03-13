@@ -1059,113 +1059,25 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
 
   
 
-  onSnapshot(
-    query(
-      collection(db, "users", senderId, "requests"),
-      orderBy("timestamp", "desc"),
-    ),
-    async (snapshot) => {
-      requestListContainer.innerHTML = "";
-      requestCountBadge.innerText = snapshot.size > 0 ? snapshot.size : "";
-      requestCountBadge.classList.toggle("count-hidden", snapshot.size === 0);
+  let requestConversationUnsub = null;
 
-      if (snapshot.empty) {
-        requestListContainer.innerHTML =
-          "<p style='text-align:center;'>No requests</p>";
-        return;
-      }
-
-      const frag = document.createDocumentFragment();
-
-      const requests = snapshot.docs.map(async (docSnap) => {
-        const reqData = docSnap.data();
-        const userDoc = await getDoc(doc(db, "users", reqData.userId));
-        const name = userDoc.exists()
-          ? window.formatChatName(userDoc.data().name)
-          : "Deleted User";
-        const image =
-          userDoc.data()?.profileImage?.trim() || "/default-avatar.png";
-
-        const div = document.createElement("div");
-        div.className = "request-item";
-        div.innerHTML = `
-        <div class="request-user">
-          <img src="${image}" class="profile-pic" />
-          <span>${name}</span>
-        </div>
-
-        <div class="request-actions">
-          <button class="view-btn" data-id="${reqData.userId}">View Message</button>
-          <button class="accept-btn" data-id="${reqData.userId}">Accept</button>
-          <button class="reject-btn" data-id="${reqData.userId}">Reject</button>
-        </div>
-        `;
-        frag.appendChild(div);
-      });
-
-      
-
-      function showRequestActions(userId) {
-
-        const actionBox = document.getElementById("requestActionBox");
-
-        actionBox.innerHTML = `
-          <div class="request-bottom-actions">
-            <button id="chatAcceptBtn">Accept</button>
-            <button id="chatRejectBtn">Reject</button>
-          </div>
-        `;
-
-        document.getElementById("chatAcceptBtn").onclick = () => acceptRequest(userId);
-        document.getElementById("chatRejectBtn").onclick = () => rejectRequest(userId);
-
-      }
-
-async function acceptRequest(userId) {
-
-  const convoId = [senderId, userId].sort().join("_");
-
-  await Promise.all([
-    setDoc(doc(db, "users", senderId, "chats", userId), {
-      conversationId: convoId,
-      userId,
-      timestamp: serverTimestamp()
-    }),
-
-    setDoc(doc(db, "users", userId, "chats", senderId), {
-      conversationId: convoId,
-      userId: senderId,
-      timestamp: serverTimestamp()
-    }),
-
-    deleteDoc(doc(db, "users", senderId, "requests", userId))
-  ]);
-
-  document.getElementById("chatRequestActions").innerHTML = "";
-
-}
-
-async function rejectRequest(userId) {
-
-  await deleteDoc(doc(db, "users", senderId, "requests", userId));
-
-  document.getElementById("chatRequestActions").innerHTML = "";
-  messagesContainer.innerHTML = "<p>Request rejected</p>";
-
-}
-let requestConversationUnsub = null;
+// =======================
+// OPEN REQUEST CHAT
+// =======================
 
 async function openRequestChat(userId) {
 
   const conversationId = [senderId, userId].sort().join("_");
 
-  const requestMessagesContainer = document.getElementById("requestMessagesContainer");
+  const requestMessagesContainer =
+    document.getElementById("requestMessagesContainer");
 
   if (!requestMessagesContainer) return;
 
-  // ✅ stop previous listener
+  // stop previous listener
   if (requestConversationUnsub) {
     requestConversationUnsub();
+    requestConversationUnsub = null;
   }
 
   requestMessagesContainer.innerHTML = "<p>Loading...</p>";
@@ -1175,7 +1087,7 @@ async function openRequestChat(userId) {
     orderBy("timestamp", "asc")
   );
 
-  requestConversationUnsub = onSnapshot(q, async (snapshot) => {
+  requestConversationUnsub = onSnapshot(q, (snapshot) => {
 
     requestMessagesContainer.innerHTML = "";
 
@@ -1184,23 +1096,20 @@ async function openRequestChat(userId) {
       return;
     }
 
-    for (const docSnap of snapshot.docs) {
+    snapshot.forEach((docSnap) => {
 
       const data = docSnap.data();
       const timestamp = data.timestamp?.toDate();
-
-      const userDoc = await getDoc(doc(db, "users", data.senderId));
-      const senderImage = userDoc.data()?.profileImage || "/default-avatar.png";
 
       const msgDiv = document.createElement("div");
       msgDiv.className = "message-item";
 
       msgDiv.innerHTML = `
       <div class="message-header">
-        <img src="${data.profileImage || senderImage}" class="msg-profile-pic"/>
+        <img src="${data.senderImage || "/default-avatar.png"}" class="msg-profile-pic"/>
 
         <div>
-          <strong>${window.formatChatName(data.name || userDoc.data()?.name)}</strong>
+          <strong>${window.formatChatName(data.senderName || "User")}</strong>
           <span class="time">
             ${
               timestamp?.toLocaleTimeString([], {
@@ -1213,21 +1122,14 @@ async function openRequestChat(userId) {
       </div>
 
       <div class="message-body">
-
         ${data.message ? `<p class="msg-text">${data.message}</p>` : ""}
-
-        ${
-          data.fileUrl
-            ? `<img src="${data.fileUrl}" class="chat-image"/>`
-            : ""
-        }
-
+        ${data.fileUrl ? `<img src="${data.fileUrl}" class="chat-image"/>` : ""}
       </div>
       `;
 
       requestMessagesContainer.appendChild(msgDiv);
 
-    }
+    });
 
     requestMessagesContainer.scrollTop =
       requestMessagesContainer.scrollHeight;
@@ -1236,114 +1138,191 @@ async function openRequestChat(userId) {
 
 }
 
-      await Promise.all(requests);
-      requestListContainer.appendChild(frag);
+// =======================
+// ACCEPT REQUEST
+// =======================
 
-      requestListContainer.querySelectorAll(".view-btn").forEach((btn) => {
+async function acceptRequest(userId) {
+
+  const convoId = [senderId, userId].sort().join("_");
+
+  await Promise.all([
+    setDoc(doc(db, "users", senderId, "chats", userId), {
+      conversationId: convoId,
+      userId,
+      timestamp: serverTimestamp(),
+    }),
+
+    setDoc(doc(db, "users", userId, "chats", senderId), {
+      conversationId: convoId,
+      userId: senderId,
+      timestamp: serverTimestamp(),
+    }),
+
+    deleteDoc(doc(db, "users", senderId, "requests", userId)),
+  ]);
+
+  document.getElementById("chatRequestActions").innerHTML = "";
+}
+
+// =======================
+// REJECT REQUEST
+// =======================
+
+async function rejectRequest(userId) {
+
+  await deleteDoc(doc(db, "users", senderId, "requests", userId));
+
+  document.getElementById("chatRequestActions").innerHTML = "";
+  messagesContainer.innerHTML = "<p>Request rejected</p>";
+}
+
+// =======================
+// SHOW ACCEPT / REJECT
+// =======================
+
+function showRequestActions(userId) {
+
+  const actionBox = document.getElementById("requestActionBox");
+
+  actionBox.innerHTML = `
+    <div class="request-bottom-actions">
+      <button id="chatAcceptBtn">Accept</button>
+      <button id="chatRejectBtn">Reject</button>
+    </div>
+  `;
+
+  document.getElementById("chatAcceptBtn").onclick = () =>
+    acceptRequest(userId);
+
+  document.getElementById("chatRejectBtn").onclick = () =>
+    rejectRequest(userId);
+}
+
+// =======================
+// LOAD REQUESTS
+// =======================
+
+onSnapshot(
+  query(
+    collection(db, "users", senderId, "requests"),
+    orderBy("timestamp", "desc")
+  ),
+  async (snapshot) => {
+
+    requestListContainer.innerHTML = "";
+
+    requestCountBadge.innerText =
+      snapshot.size > 0 ? snapshot.size : "";
+
+    requestCountBadge.classList.toggle(
+      "count-hidden",
+      snapshot.size === 0
+    );
+
+    if (snapshot.empty) {
+
+      requestListContainer.innerHTML =
+        "<p style='text-align:center;'>No requests</p>";
+
+      return;
+    }
+
+    const frag = document.createDocumentFragment();
+
+    for (const docSnap of snapshot.docs) {
+
+      const reqData = docSnap.data();
+
+      const userDoc = await getDoc(
+        doc(db, "users", reqData.userId)
+      );
+
+      const name = userDoc.exists()
+        ? window.formatChatName(userDoc.data().name)
+        : "Deleted User";
+
+      const image =
+        userDoc.data()?.profileImage?.trim() ||
+        "/default-avatar.png";
+
+      const div = document.createElement("div");
+
+      div.className = "request-item";
+
+      div.innerHTML = `
+      <div class="request-user">
+        <img src="${image}" class="profile-pic" />
+        <span>${name}</span>
+      </div>
+
+      <div class="request-actions">
+        <button class="view-btn" data-id="${reqData.userId}">
+          View Message
+        </button>
+
+        <button class="accept-btn" data-id="${reqData.userId}">
+          Accept
+        </button>
+
+        <button class="reject-btn" data-id="${reqData.userId}">
+          Reject
+        </button>
+      </div>
+      `;
+
+      frag.appendChild(div);
+    }
+
+    requestListContainer.appendChild(frag);
+
+    // ======================
+    // VIEW MESSAGE
+    // ======================
+
+    requestListContainer
+      .querySelectorAll(".view-btn")
+      .forEach((btn) => {
 
         btn.addEventListener("click", () => {
 
           const userId = btn.dataset.id;
-          console.log(userId)
 
-          // open conversation
           openRequestChat(userId);
 
-          // show accept/reject buttons inside chat
           showRequestActions(userId);
-
-        });
-
-      });
-
-      requestListContainer.querySelectorAll(".accept-btn").forEach((btn) => {
-        btn.addEventListener("click", async () => {
-          const userId = btn.dataset.id;
-          const convoId = [senderId, userId].sort().join("_");
-
-          try {
-            // Create chat docs for both users
-            await Promise.all([
-              setDoc(doc(db, "users", senderId, "chats", userId), {
-                conversationId: convoId,
-                userId,
-                timestamp: serverTimestamp(),
-              }),
-              setDoc(doc(db, "users", userId, "chats", senderId), {
-                conversationId: convoId,
-                userId: senderId,
-                timestamp: serverTimestamp(),
-              }),
-              deleteDoc(doc(db, "users", senderId, "requests", userId)),
-            ]);
-
-            const messagesRef = collection(
-              db,
-              "conversations",
-              convoId,
-              "messages",
-            );
-            const pendingQuery = query(
-              messagesRef,
-              where("senderId", "==", userId), // assuming sender of request
-              where("pending", "==", true),
-            );
-            const pendingMessages = await getDocs(pendingQuery);
-
-            for (const msgDoc of pendingMessages.docs) {
-              await updateDoc(
-                doc(db, "conversations", convoId, "messages", msgDoc.id),
-                {
-                  pending: false,
-                },
-              );
-            }
-
-            const notificationsRef = collection(
-              db,
-              "users",
-              senderId,
-              "notifications",
-            );
-            const q = query(notificationsRef, where("senderId", "==", userId));
-            const querySnapshot = await getDocs(q);
-
-            for (const docSnap of querySnapshot.docs) {
-              await deleteDoc(
-                doc(db, "users", senderId, "notifications", docSnap.id),
-              );
-            }
-          } catch (error) {
-            console.error("Error accepting request:", error);
-          }
         });
       });
 
-      requestListContainer.querySelectorAll(".reject-btn").forEach((btn) => {
-        btn.addEventListener("click", async () => {
-          const userId = btn.dataset.id; // this is receiverId
-          const notificationsRef = collection(
-            db,
-            "users",
-            senderId,
-            "notifications",
-          );
+    // ======================
+    // ACCEPT BUTTON
+    // ======================
 
-          const q = query(notificationsRef, where("senderId", "==", userId));
-          const querySnapshot = await getDocs(q);
+    requestListContainer
+      .querySelectorAll(".accept-btn")
+      .forEach((btn) => {
 
-          querySnapshot.forEach(async (docSnap) => {
-            await deleteDoc(
-              doc(db, "users", senderId, "notifications", docSnap.id),
-            );
-          });
+        btn.addEventListener("click", () => {
 
-          await deleteDoc(doc(db, "users", senderId, "requests", userId));
-          await deleteDoc(doc(db, "users", senderId, "chats", userId));
+          acceptRequest(btn.dataset.id);
         });
       });
-    },
-  );
+
+    // ======================
+    // REJECT BUTTON
+    // ======================
+
+    requestListContainer
+      .querySelectorAll(".reject-btn")
+      .forEach((btn) => {
+
+        btn.addEventListener("click", () => {
+
+          rejectRequest(btn.dataset.id);
+        });
+      });
+  }
+);
 
   // Lightbox Preview on image click
   document.addEventListener("click", function (e) {
