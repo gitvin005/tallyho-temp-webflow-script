@@ -1470,32 +1470,29 @@ document.addEventListener("DOMContentLoaded", async () => {
 /* conversation tab badge */
 
 async function listenUnreadMessagesCount() {
-
   const loggedUserId = await getLoginId();
   if (!loggedUserId) return;
 
   const notificationList = document.getElementById("notification-list");
   const badge = document.getElementById("notification-badge");
-
   if (!notificationList) return;
 
   const userChatsRef = collection(db, `users/${loggedUserId}/chats`);
+  
+  // Store per-conversation unread data separately
+  const conversationUnreadMap = {}; // { conversationId: { senderId, count } }
+  const innerListeners = [];
 
   onSnapshot(userChatsRef, (chatSnapshot) => {
-
-    notificationList.innerHTML = "";
-    let totalUnread = 0;
-
-    const senderMap = {};
-    const listeners = [];
+    // Clean up previous inner listeners
+    innerListeners.forEach((unsub) => unsub());
+    innerListeners.length = 0;
 
     chatSnapshot.forEach((chatDoc) => {
-
       const { conversationId } = chatDoc.data();
       if (!conversationId) return;
 
       const messagesRef = collection(db, `conversations/${conversationId}/messages`);
-
       const unreadQuery = query(
         messagesRef,
         where("read", "==", false),
@@ -1503,81 +1500,71 @@ async function listenUnreadMessagesCount() {
       );
 
       const unsub = onSnapshot(unreadQuery, (unreadSnapshot) => {
+        // Reset this conversation's data on every snapshot
+        const senderCounts = {};
 
         unreadSnapshot.forEach((docSnap) => {
-
-          const msg = docSnap.data();
-          const senderId = msg.senderId;
-
-          totalUnread++;
-
-          if (!senderMap[senderId]) {
-            senderMap[senderId] = {
-              count: 0
-            };
-          }
-
-          senderMap[senderId].count++;
-
+          const { senderId } = docSnap.data();
+          if (!senderCounts[senderId]) senderCounts[senderId] = 0;
+          senderCounts[senderId]++;
         });
+
+        conversationUnreadMap[conversationId] = senderCounts;
 
         renderNotifications();
       });
 
-      listeners.push(unsub);
-
+      innerListeners.push(unsub);
     });
+  });
 
-    async function renderNotifications() {
+  async function renderNotifications() {
+    // Merge all conversations into a single senderMap
+    const senderMap = {};
 
-      notificationList.innerHTML = "";
+    for (const convId in conversationUnreadMap) {
+      const senderCounts = conversationUnreadMap[convId];
+      for (const senderId in senderCounts) {
+        if (!senderMap[senderId]) senderMap[senderId] = 0;
+        senderMap[senderId] += senderCounts[senderId];
+      }
+    }
 
-      for (const senderId in senderMap) {
+    const totalUnread = Object.values(senderMap).reduce((a, b) => a + b, 0);
 
-        const data = senderMap[senderId];
+    notificationList.innerHTML = "";
 
-        const userDoc = await getDoc(doc(db, "users", senderId));
+    for (const senderId in senderMap) {
+      const count = senderMap[senderId];
+      const userDoc = await getDoc(doc(db, "users", senderId));
+      const senderName = userDoc.exists()
+        ? window.formatChatName(userDoc.data().name)
+        : "User";
+      const senderImage = userDoc.data()?.profileImage || "/default-avatar.png";
 
-        const senderName = userDoc.exists()
-          ? window.formatChatName(userDoc.data().name)
-          : "User";
-
-        const senderImage =
-          userDoc.data()?.profileImage || "/default-avatar.png";
-
-        const item = document.createElement("div");
-        item.className = "notification-item unread";
-
-        item.innerHTML = `
+      const item = document.createElement("div");
+      item.className = "notification-item unread";
+      item.innerHTML = `
         <div class="notification">
           <img src="${senderImage}" class="notif-avatar"/>
           <div>
             <strong>${senderName}</strong>
-            <p>
-              You got ${data.count} new message${data.count > 1 ? "s" : ""} from ${senderName}
-            </p>
+            <p>You got ${count} new message${count > 1 ? "s" : ""} from ${senderName}</p>
           </div>
         </div>
-        `;
-
-        item.addEventListener("click", () => {
-          window.location.href = `/messages?user=${senderId}`;
-        });
-
-        notificationList.appendChild(item);
-      }
-
-      const displayCount = totalUnread > 9 ? "9+" : totalUnread;
-
-      if (badge) {
-        badge.innerText = displayCount;
-        badge.style.display = totalUnread > 0 ? "inline-block" : "none";
-      }
-
+      `;
+      item.addEventListener("click", () => {
+        window.location.href = `/messages?user=${senderId}`;
+      });
+      notificationList.appendChild(item);
     }
 
-  });
-
+    if (badge) {
+      const displayCount = totalUnread > 9 ? "9+" : totalUnread;
+      badge.innerText = displayCount;
+      badge.style.display = totalUnread > 0 ? "inline-block" : "none";
+    }
+  }
 }
 
 listenUnreadMessagesCount();
