@@ -448,10 +448,12 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
   const memberstack = window.$memberstackDom;
   const memberData = await memberstack.getCurrentMember();
   const senderId = memberData.data.id;
-  const senderName =
+  const senderName = window.formatChatName(
     memberData.data.customFields["first-name"] +
     " " +
-    memberData.data.customFields["last-name"];
+    memberData.data.customFields["last-name"]
+  )
+    
   const senderImage =
     memberData.data.profileImage?.trim() || "/default-avatar.png";
 
