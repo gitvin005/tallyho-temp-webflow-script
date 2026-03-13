@@ -1060,15 +1060,22 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
   
 
 let requestConversationUnsub = null;
+let activeRequestChat = null;
 
 async function openRequestChat(userId) {
 
   const conversationId = [senderId, userId].sort().join("_");
-  const requestMessagesContainer = document.getElementById("requestMessagesContainer");
+
+  const requestMessagesContainer =
+    document.getElementById("requestMessagesContainer");
 
   if (!requestMessagesContainer) return;
 
-  // stop old listener
+  // 🚀 prevent reopening same chat
+  if (activeRequestChat === conversationId) return;
+  activeRequestChat = conversationId;
+
+  // 🔥 remove old listener
   if (requestConversationUnsub) {
     requestConversationUnsub();
     requestConversationUnsub = null;
@@ -1090,12 +1097,14 @@ async function openRequestChat(userId) {
       return;
     }
 
+    const fragment = document.createDocumentFragment();
+
     for (const docSnap of snapshot.docs) {
 
       const data = docSnap.data();
       const timestamp = data.timestamp?.toDate();
 
-      // 🔹 fetch sender profile
+      // get sender info
       const userDoc = await getDoc(doc(db, "users", data.senderId));
 
       const senderName = userDoc.exists()
@@ -1111,7 +1120,7 @@ async function openRequestChat(userId) {
       msgDiv.innerHTML = `
       
       <div class="message-header">
-        <img src="${senderImage}" class="msg-profile-pic" />
+        <img src="${senderImage}" class="msg-profile-pic"/>
 
         <div>
           <strong>${senderName}</strong>
@@ -1139,12 +1148,16 @@ async function openRequestChat(userId) {
       </div>
       `;
 
-      requestMessagesContainer.appendChild(msgDiv);
+      fragment.appendChild(msgDiv);
     }
+
+    requestMessagesContainer.appendChild(fragment);
 
     requestMessagesContainer.scrollTop =
       requestMessagesContainer.scrollHeight;
+
   });
+
 }
 
 // =======================
