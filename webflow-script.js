@@ -1062,6 +1062,10 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
 let requestConversationUnsub = null;
 let activeRequestChat = null;
 
+// ── Move these OUTSIDE openRequestChat so they survive re-renders ──
+const renderedMessageIds = new Set();
+const userCache = {};
+
 async function openRequestChat(userId) {
   const conversationId = [senderId, userId].sort().join("_");
   const requestMessagesContainer = document.getElementById("requestMessagesContainer");
@@ -1075,23 +1079,21 @@ async function openRequestChat(userId) {
     requestConversationUnsub = null;
   }
 
+  // ── Clear state when switching to a NEW conversation ──
+  renderedMessageIds.clear();
+
   requestMessagesContainer.innerHTML = "<p>Loading...</p>";
 
-  // Cache user docs so we don't re-fetch the same sender repeatedly
-  const userCache = {};
-
-  async function getSenderInfo(senderId) {
-    if (userCache[senderId]) return userCache[senderId];
-    const userDoc = await getDoc(doc(db, "users", senderId));
-    userCache[senderId] = {
+  async function getSenderInfo(sid) {
+    if (userCache[sid]) return userCache[sid];
+    const userDoc = await getDoc(doc(db, "users", sid));
+    userCache[sid] = {
       name: userDoc.exists() ? window.formatChatName(userDoc.data().name) : "User",
       image: userDoc.data()?.profileImage || "/default-avatar.png",
     };
-    return userCache[senderId];
+    return userCache[sid];
   }
 
-  // Track rendered message IDs so we only append NEW messages
-  const renderedMessageIds = new Set();
   let isFirstLoad = true;
 
   const q = query(
@@ -1108,11 +1110,9 @@ async function openRequestChat(userId) {
     }
 
     if (isFirstLoad) {
-      // ── First load: render all messages at once ──
       requestMessagesContainer.innerHTML = "";
       isFirstLoad = false;
 
-      // Fetch ALL sender info in parallel, not sequentially
       const docs = snapshot.docs;
       const senderIds = [...new Set(docs.map(d => d.data().senderId))];
       await Promise.all(senderIds.map(getSenderInfo));
@@ -1125,9 +1125,8 @@ async function openRequestChat(userId) {
       requestMessagesContainer.appendChild(fragment);
 
     } else {
-      // ── Subsequent updates: only append truly new messages ──
       const newDocs = snapshot.docs.filter(d => !renderedMessageIds.has(d.id));
-      if (newDocs.length === 0) return; // nothing new (e.g. a read-status update fired)
+      if (newDocs.length === 0) return;
 
       const senderIds = [...new Set(newDocs.map(d => d.data().senderId))];
       await Promise.all(senderIds.map(getSenderInfo));
@@ -1171,25 +1170,16 @@ async function openRequestChat(userId) {
 // =======================
 
 async function acceptRequest(userId) {
-
   const convoId = [senderId, userId].sort().join("_");
-
   await Promise.all([
     setDoc(doc(db, "users", senderId, "chats", userId), {
-      conversationId: convoId,
-      userId,
-      timestamp: serverTimestamp(),
+      conversationId: convoId, userId, timestamp: serverTimestamp(),
     }),
-
     setDoc(doc(db, "users", userId, "chats", senderId), {
-      conversationId: convoId,
-      userId: senderId,
-      timestamp: serverTimestamp(),
+      conversationId: convoId, userId: senderId, timestamp: serverTimestamp(),
     }),
-
     deleteDoc(doc(db, "users", senderId, "requests", userId)),
   ]);
-
   document.getElementById("chatRequestActions").innerHTML = "";
 }
 
@@ -1198,9 +1188,7 @@ async function acceptRequest(userId) {
 // =======================
 
 async function rejectRequest(userId) {
-
   await deleteDoc(doc(db, "users", senderId, "requests", userId));
-
   document.getElementById("chatRequestActions").innerHTML = "";
   messagesContainer.innerHTML = "<p>Request rejected</p>";
 }
@@ -1210,21 +1198,15 @@ async function rejectRequest(userId) {
 // =======================
 
 function showRequestActions(userId) {
-
   const actionBox = document.getElementById("requestActionBox");
-
   actionBox.innerHTML = `
     <div class="request-bottom-actions">
       <button id="chatAcceptBtn">Accept</button>
       <button id="chatRejectBtn">Reject</button>
     </div>
   `;
-
-  document.getElementById("chatAcceptBtn").onclick = () =>
-    acceptRequest(userId);
-
-  document.getElementById("chatRejectBtn").onclick = () =>
-    rejectRequest(userId);
+  document.getElementById("chatAcceptBtn").onclick = () => acceptRequest(userId);
+  document.getElementById("chatRejectBtn").onclick = () => rejectRequest(userId);
 }
 
 // =======================
@@ -1232,125 +1214,60 @@ function showRequestActions(userId) {
 // =======================
 
 onSnapshot(
-  query(
-    collection(db, "users", senderId, "requests"),
-    orderBy("timestamp", "desc")
-  ),
+  query(collection(db, "users", senderId, "requests"), orderBy("timestamp", "desc")),
   async (snapshot) => {
-
     requestListContainer.innerHTML = "";
 
-    requestCountBadge.innerText =
-      snapshot.size > 0 ? snapshot.size : "";
-
-    requestCountBadge.classList.toggle(
-      "count-hidden",
-      snapshot.size === 0
-    );
+    requestCountBadge.innerText = snapshot.size > 0 ? snapshot.size : "";
+    requestCountBadge.classList.toggle("count-hidden", snapshot.size === 0);
 
     if (snapshot.empty) {
-
-      requestListContainer.innerHTML =
-        "<p style='text-align:center;'>No requests</p>";
-
+      requestListContainer.innerHTML = "<p style='text-align:center;'>No requests</p>";
       return;
     }
 
+    // ── Fetch all user docs in parallel ──
+    const reqDocs = snapshot.docs.map(d => d.data());
+    const userDocs = await Promise.all(
+      reqDocs.map(r => getDoc(doc(db, "users", r.userId)))
+    );
+
     const frag = document.createDocumentFragment();
 
-    for (const docSnap of snapshot.docs) {
-
-      const reqData = docSnap.data();
-
-      const userDoc = await getDoc(
-        doc(db, "users", reqData.userId)
-      );
-
-      const name = userDoc.exists()
-        ? window.formatChatName(userDoc.data().name)
-        : "Deleted User";
-
-      const image =
-        userDoc.data()?.profileImage?.trim() ||
-        "/default-avatar.png";
+    reqDocs.forEach((reqData, i) => {
+      const userDoc = userDocs[i];
+      const name = userDoc.exists() ? window.formatChatName(userDoc.data().name) : "Deleted User";
+      const image = userDoc.data()?.profileImage?.trim() || "/default-avatar.png";
 
       const div = document.createElement("div");
-
       div.className = "request-item";
-
       div.innerHTML = `
-      <div class="request-user">
-        <img src="${image}" class="profile-pic" />
-        <span>${name}</span>
-      </div>
-
-      <div class="request-actions">
-        <button class="view-btn" data-id="${reqData.userId}">
-          View Message
-        </button>
-
-        <button class="accept-btn" data-id="${reqData.userId}">
-          Accept
-        </button>
-
-        <button class="reject-btn" data-id="${reqData.userId}">
-          Reject
-        </button>
-      </div>
+        <div class="request-user">
+          <img src="${image}" class="profile-pic" />
+          <span>${name}</span>
+        </div>
+        <div class="request-actions">
+          <button class="view-btn" data-id="${reqData.userId}">View Message</button>
+          <button class="accept-btn" data-id="${reqData.userId}">Accept</button>
+          <button class="reject-btn" data-id="${reqData.userId}">Reject</button>
+        </div>
       `;
 
+      // ── Attach listeners directly on the element, not via querySelectorAll after ──
+      div.querySelector(".view-btn").addEventListener("click", () => {
+        openRequestChat(reqData.userId);
+        showRequestActions(reqData.userId);
+      });
+      div.querySelector(".accept-btn").addEventListener("click", () => acceptRequest(reqData.userId));
+      div.querySelector(".reject-btn").addEventListener("click", () => rejectRequest(reqData.userId));
+
       frag.appendChild(div);
-    }
+    });
 
     requestListContainer.appendChild(frag);
-
-    // ======================
-    // VIEW MESSAGE
-    // ======================
-
-    requestListContainer
-      .querySelectorAll(".view-btn")
-      .forEach((btn) => {
-
-        btn.addEventListener("click", () => {
-
-          const userId = btn.dataset.id;
-
-          openRequestChat(userId);
-
-          showRequestActions(userId);
-        });
-      });
-
-    // ======================
-    // ACCEPT BUTTON
-    // ======================
-
-    requestListContainer
-      .querySelectorAll(".accept-btn")
-      .forEach((btn) => {
-
-        btn.addEventListener("click", () => {
-
-          acceptRequest(btn.dataset.id);
-        });
-      });
-
-    // ======================
-    // REJECT BUTTON
-    // ======================
-
-    requestListContainer
-      .querySelectorAll(".reject-btn")
-      .forEach((btn) => {
-
-        btn.addEventListener("click", () => {
-
-          rejectRequest(btn.dataset.id);
-        });
-      });
   }
 );
+
 
   // Lightbox Preview on image click
   document.addEventListener("click", function (e) {
