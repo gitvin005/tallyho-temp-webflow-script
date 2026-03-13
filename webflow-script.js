@@ -1477,16 +1477,23 @@ async function listenUnreadMessagesCount() {
   const badge = document.getElementById("notification-badge");
   if (!notificationList) return;
 
-  const userChatsRef = collection(db, `users/${loggedUserId}/chats`);
-  
-  // Store per-conversation unread data separately
-  const conversationUnreadMap = {}; // { conversationId: { senderId, count } }
+  const conversationUnreadMap = {};
   const innerListeners = [];
+  let renderTimer = null;         // ← debounce handle
+  let isRendering = false;        // ← prevent overlapping async renders
+
+  function scheduleRender() {
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(renderNotifications, 50); // wait 50ms for all snapshots to settle
+  }
+
+  const userChatsRef = collection(db, `users/${loggedUserId}/chats`);
 
   onSnapshot(userChatsRef, (chatSnapshot) => {
-    // Clean up previous inner listeners
+    // Clean up old listeners AND their data
     innerListeners.forEach((unsub) => unsub());
     innerListeners.length = 0;
+    Object.keys(conversationUnreadMap).forEach(k => delete conversationUnreadMap[k]); // ← clear stale data
 
     chatSnapshot.forEach((chatDoc) => {
       const { conversationId } = chatDoc.data();
@@ -1500,18 +1507,15 @@ async function listenUnreadMessagesCount() {
       );
 
       const unsub = onSnapshot(unreadQuery, (unreadSnapshot) => {
-        // Reset this conversation's data on every snapshot
+        // Reset just this conversation's counts
         const senderCounts = {};
-
         unreadSnapshot.forEach((docSnap) => {
           const { senderId } = docSnap.data();
-          if (!senderCounts[senderId]) senderCounts[senderId] = 0;
-          senderCounts[senderId]++;
+          senderCounts[senderId] = (senderCounts[senderId] || 0) + 1;
         });
-
         conversationUnreadMap[conversationId] = senderCounts;
 
-        renderNotifications();
+        scheduleRender(); // ← don't render immediately, debounce it
       });
 
       innerListeners.push(unsub);
@@ -1519,37 +1523,46 @@ async function listenUnreadMessagesCount() {
   });
 
   async function renderNotifications() {
-    // Merge all conversations into a single senderMap
-    const senderMap = {};
+    if (isRendering) {
+      scheduleRender(); // ← if already rendering, re-schedule instead of overlapping
+      return;
+    }
+    isRendering = true;
 
+    // Merge all conversations into one senderMap
+    const senderMap = {};
     for (const convId in conversationUnreadMap) {
-      const senderCounts = conversationUnreadMap[convId];
-      for (const senderId in senderCounts) {
-        if (!senderMap[senderId]) senderMap[senderId] = 0;
-        senderMap[senderId] += senderCounts[senderId];
+      for (const [senderId, count] of Object.entries(conversationUnreadMap[convId])) {
+        senderMap[senderId] = (senderMap[senderId] || 0) + count;
       }
     }
 
     const totalUnread = Object.values(senderMap).reduce((a, b) => a + b, 0);
 
+    // Fetch all user docs in parallel before touching the DOM
+    const senderEntries = await Promise.all(
+      Object.entries(senderMap).map(async ([senderId, count]) => {
+        const userDoc = await getDoc(doc(db, "users", senderId));
+        return {
+          senderId,
+          count,
+          name: userDoc.exists() ? window.formatChatName(userDoc.data().name) : "User",
+          image: userDoc.data()?.profileImage || "/default-avatar.png",
+        };
+      })
+    );
+
+    // Only touch the DOM once, after all data is ready
     notificationList.innerHTML = "";
-
-    for (const senderId in senderMap) {
-      const count = senderMap[senderId];
-      const userDoc = await getDoc(doc(db, "users", senderId));
-      const senderName = userDoc.exists()
-        ? window.formatChatName(userDoc.data().name)
-        : "User";
-      const senderImage = userDoc.data()?.profileImage || "/default-avatar.png";
-
+    for (const { senderId, count, name, image } of senderEntries) {
       const item = document.createElement("div");
       item.className = "notification-item unread";
       item.innerHTML = `
         <div class="notification">
-          <img src="${senderImage}" class="notif-avatar"/>
+          <img src="${image}" class="notif-avatar"/>
           <div>
-            <strong>${senderName}</strong>
-            <p>You got ${count} new message${count > 1 ? "s" : ""} from ${senderName}</p>
+            <strong>${name}</strong>
+            <p>You got ${count} new message${count > 1 ? "s" : ""} from ${name}</p>
           </div>
         </div>
       `;
@@ -1564,6 +1577,8 @@ async function listenUnreadMessagesCount() {
       badge.innerText = displayCount;
       badge.style.display = totalUnread > 0 ? "inline-block" : "none";
     }
+
+    isRendering = false;
   }
 }
 
