@@ -1008,6 +1008,11 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
             .forEach((el) => el.classList.remove("active-chat"));
 
           item.parentElement.classList.add("active-chat");
+
+          // ✅ REMOVE BADGE WHEN CHAT OPENS
+          const badge = item.querySelector(".msg-count-badge");
+          if (badge) badge.remove();
+
         });
       });
 
