@@ -831,6 +831,8 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
     });
   }
 
+  window.openChat = openChat;
+
   const loadChats = (sortType = "recent") => {
     if (unsubscribe) unsubscribe();
 
@@ -1102,37 +1104,23 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
         frag.appendChild(div);
       });
 
-      requestListContainer.querySelectorAll(".view-btn").forEach((btn) => {
+      
 
-  btn.addEventListener("click", () => {
+      function showRequestActions(userId) {
 
-    const userId = btn.dataset.id;
+        const actionBox = document.getElementById("requestActionBox");
 
-    // open conversation
-    openChat(userId);
+        actionBox.innerHTML = `
+          <div class="request-bottom-actions">
+            <button id="chatAcceptBtn">Accept</button>
+            <button id="chatRejectBtn">Reject</button>
+          </div>
+        `;
 
-    // show accept/reject buttons inside chat
-    showRequestActions(userId);
+        document.getElementById("chatAcceptBtn").onclick = () => acceptRequest(userId);
+        document.getElementById("chatRejectBtn").onclick = () => rejectRequest(userId);
 
-  });
-
-});
-
-function showRequestActions(userId) {
-
-  const actionBox = document.getElementById("requestActionBox");
-
-  actionBox.innerHTML = `
-    <div class="request-bottom-actions">
-      <button id="chatAcceptBtn">Accept</button>
-      <button id="chatRejectBtn">Reject</button>
-    </div>
-  `;
-
-  document.getElementById("chatAcceptBtn").onclick = () => acceptRequest(userId);
-  document.getElementById("chatRejectBtn").onclick = () => rejectRequest(userId);
-
-}
+      }
 
 async function acceptRequest(userId) {
 
@@ -1169,6 +1157,23 @@ async function rejectRequest(userId) {
 
       await Promise.all(requests);
       requestListContainer.appendChild(frag);
+
+      requestListContainer.querySelectorAll(".view-btn").forEach((btn) => {
+
+        btn.addEventListener("click", () => {
+
+          const userId = btn.dataset.id;
+          console.log(userId)
+
+          // open conversation
+          window.openChat(userId);
+
+          // show accept/reject buttons inside chat
+          showRequestActions(userId);
+
+        });
+
+      });
 
       requestListContainer.querySelectorAll(".accept-btn").forEach((btn) => {
         btn.addEventListener("click", async () => {
