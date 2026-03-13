@@ -1210,11 +1210,11 @@ async function openRequestChat(userId) {
 
       <div class="message-body">
 
-        ${data.text ? `<p class="msg-text">${data.text}</p>` : ""}
+        ${data.message ? `<p class="msg-text">${data.message}</p>` : ""}
 
         ${
-          data.image
-            ? `<img src="${data.image}" class="chat-image"/>`
+          data.fileUrl
+            ? `<img src="${data.fileUrl}" class="chat-image"/>`
             : ""
         }
 
