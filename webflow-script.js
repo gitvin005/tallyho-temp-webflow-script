@@ -1104,28 +1104,17 @@ async function openRequestChat(userId) {
       const msgDiv = document.createElement("div");
       msgDiv.className = "message-item";
 
-      msgDiv.innerHTML = `
-      <div class="message-header">
-        <img src="${data.senderImage || "/default-avatar.png"}" class="msg-profile-pic"/>
-
-        <div>
-          <strong>${window.formatChatName(data.senderName || "User")}</strong>
-          <span class="time">
-            ${
-              timestamp?.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit"
-              }) || "Now"
-            }
-          </span>
-        </div>
-      </div>
-
-      <div class="message-body">
-        ${data.message ? `<p class="msg-text">${data.message}</p>` : ""}
-        ${data.fileUrl ? `<img src="${data.fileUrl}" class="chat-image"/>` : ""}
-      </div>
-      `;
+      msgDiv.innerHTML = `<div class="message-header"> 
+      <img src="${data.profileImage || senderImage}" class="msg-profile-pic"/> 
+      <div> 
+      <strong>${window.formatChatName(data.name || userDoc.data()?.name)}</strong> 
+      <span class="time"> ${ timestamp?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) || "Now" } </span> 
+      </div> 
+      </div> 
+      <div class="message-body"> 
+      ${data.message ? <p class="msg-text">${data.message}</p> : ""} 
+      ${ data.fileUrl ? <img src="${data.fileUrl}" class="chat-image"/> : "" } 
+      </div>` ;
 
       requestMessagesContainer.appendChild(msgDiv);
 
