@@ -1063,19 +1063,13 @@ let requestConversationUnsub = null;
 let activeRequestChat = null;
 
 async function openRequestChat(userId) {
-
   const conversationId = [senderId, userId].sort().join("_");
-
-  const requestMessagesContainer =
-    document.getElementById("requestMessagesContainer");
-
+  const requestMessagesContainer = document.getElementById("requestMessagesContainer");
   if (!requestMessagesContainer) return;
 
-  // 🚀 prevent reopening same chat
   if (activeRequestChat === conversationId) return;
   activeRequestChat = conversationId;
 
-  // 🔥 remove old listener
   if (requestConversationUnsub) {
     requestConversationUnsub();
     requestConversationUnsub = null;
@@ -1083,81 +1077,93 @@ async function openRequestChat(userId) {
 
   requestMessagesContainer.innerHTML = "<p>Loading...</p>";
 
+  // Cache user docs so we don't re-fetch the same sender repeatedly
+  const userCache = {};
+
+  async function getSenderInfo(senderId) {
+    if (userCache[senderId]) return userCache[senderId];
+    const userDoc = await getDoc(doc(db, "users", senderId));
+    userCache[senderId] = {
+      name: userDoc.exists() ? window.formatChatName(userDoc.data().name) : "User",
+      image: userDoc.data()?.profileImage || "/default-avatar.png",
+    };
+    return userCache[senderId];
+  }
+
+  // Track rendered message IDs so we only append NEW messages
+  const renderedMessageIds = new Set();
+  let isFirstLoad = true;
+
   const q = query(
     collection(db, "conversations", conversationId, "messages"),
     orderBy("timestamp", "asc")
   );
 
   requestConversationUnsub = onSnapshot(q, async (snapshot) => {
-
-    requestMessagesContainer.innerHTML = "";
-
     if (snapshot.empty) {
       requestMessagesContainer.innerHTML = "<p>No messages yet</p>";
+      renderedMessageIds.clear();
+      isFirstLoad = true;
       return;
     }
 
-    const fragment = document.createDocumentFragment();
+    if (isFirstLoad) {
+      // ── First load: render all messages at once ──
+      requestMessagesContainer.innerHTML = "";
+      isFirstLoad = false;
 
-    for (const docSnap of snapshot.docs) {
+      // Fetch ALL sender info in parallel, not sequentially
+      const docs = snapshot.docs;
+      const senderIds = [...new Set(docs.map(d => d.data().senderId))];
+      await Promise.all(senderIds.map(getSenderInfo));
 
-      const data = docSnap.data();
-      const timestamp = data.timestamp?.toDate();
+      const fragment = document.createDocumentFragment();
+      for (const docSnap of docs) {
+        renderedMessageIds.add(docSnap.id);
+        fragment.appendChild(buildMessageEl(docSnap.data(), await getSenderInfo(docSnap.data().senderId)));
+      }
+      requestMessagesContainer.appendChild(fragment);
 
-      // get sender info
-      const userDoc = await getDoc(doc(db, "users", data.senderId));
+    } else {
+      // ── Subsequent updates: only append truly new messages ──
+      const newDocs = snapshot.docs.filter(d => !renderedMessageIds.has(d.id));
+      if (newDocs.length === 0) return; // nothing new (e.g. a read-status update fired)
 
-      const senderName = userDoc.exists()
-        ? window.formatChatName(userDoc.data().name)
-        : "User";
+      const senderIds = [...new Set(newDocs.map(d => d.data().senderId))];
+      await Promise.all(senderIds.map(getSenderInfo));
 
-      const senderImage =
-        userDoc.data()?.profileImage || "/default-avatar.png";
-
-      const msgDiv = document.createElement("div");
-      msgDiv.className = "message-item";
-
-      msgDiv.innerHTML = `
-      
-      <div class="message-header">
-        <img src="${senderImage}" class="msg-profile-pic"/>
-
-        <div>
-          <strong>${senderName}</strong>
-          <span class="time">
-            ${
-              timestamp?.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit"
-              }) || "Now"
-            }
-          </span>
-        </div>
-      </div>
-
-      <div class="message-body">
-
-        ${data.message ? `<p class="msg-text">${data.message}</p>` : ""}
-
-        ${
-          data.fileUrl
-            ? `<img src="${data.fileUrl}" class="chat-image"/>`
-            : ""
-        }
-
-      </div>
-      `;
-
-      fragment.appendChild(msgDiv);
+      const fragment = document.createDocumentFragment();
+      for (const docSnap of newDocs) {
+        renderedMessageIds.add(docSnap.id);
+        fragment.appendChild(buildMessageEl(docSnap.data(), await getSenderInfo(docSnap.data().senderId)));
+      }
+      requestMessagesContainer.appendChild(fragment);
     }
 
-    requestMessagesContainer.appendChild(fragment);
-
-    requestMessagesContainer.scrollTop =
-      requestMessagesContainer.scrollHeight;
-
+    requestMessagesContainer.scrollTop = requestMessagesContainer.scrollHeight;
   });
 
+  function buildMessageEl(data, sender) {
+    const timestamp = data.timestamp?.toDate();
+    const msgDiv = document.createElement("div");
+    msgDiv.className = "message-item";
+    msgDiv.innerHTML = `
+      <div class="message-header">
+        <img src="${sender.image}" class="msg-profile-pic"/>
+        <div>
+          <strong>${sender.name}</strong>
+          <span class="time">${
+            timestamp?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) || "Now"
+          }</span>
+        </div>
+      </div>
+      <div class="message-body">
+        ${data.message ? `<p class="msg-text">${data.message}</p>` : ""}
+        ${data.fileUrl ? `<img src="${data.fileUrl}" class="chat-image"/>` : ""}
+      </div>
+    `;
+    return msgDiv;
+  }
 }
 
 // =======================
