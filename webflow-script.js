@@ -821,7 +821,7 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
       }
       const userFetches = snapshot.docs.map(async (chatDoc) => {
         const chatData = chatDoc.data();
-        const userId = chatData.userId;
+        let userId = chatData.userId;
         if (!userId) return;
 
         const requestRef = doc(db, "users", senderId, "requests", userId);
