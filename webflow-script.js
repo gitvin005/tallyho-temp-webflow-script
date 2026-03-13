@@ -1088,12 +1088,13 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
         const div = document.createElement("div");
         div.className = "request-item";
         div.innerHTML = `
-        <div class="request-user" data-user="${reqData.userId}">
+        <div class="request-user">
           <img src="${image}" class="profile-pic" />
           <span>${name}</span>
         </div>
 
         <div class="request-actions">
+          <button class="view-btn" data-id="${reqData.userId}">View Message</button>
           <button class="accept-btn" data-id="${reqData.userId}">Accept</button>
           <button class="reject-btn" data-id="${reqData.userId}">Reject</button>
         </div>
@@ -1101,16 +1102,16 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
         frag.appendChild(div);
       });
 
-      requestListContainer.querySelectorAll(".request-user").forEach((item) => {
+      requestListContainer.querySelectorAll(".view-btn").forEach((btn) => {
 
-  item.addEventListener("click", () => {
+  btn.addEventListener("click", () => {
 
-    const userId = item.dataset.user;
+    const userId = btn.dataset.id;
 
-    // open messages of request user
+    // open conversation
     openChat(userId);
 
-    // show request buttons in chat footer
+    // show accept/reject buttons inside chat
     showRequestActions(userId);
 
   });
