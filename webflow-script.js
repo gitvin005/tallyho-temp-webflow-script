@@ -1059,22 +1059,16 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
 
   
 
-  let requestConversationUnsub = null;
-
-// =======================
-// OPEN REQUEST CHAT
-// =======================
+let requestConversationUnsub = null;
 
 async function openRequestChat(userId) {
 
   const conversationId = [senderId, userId].sort().join("_");
-
-  const requestMessagesContainer =
-    document.getElementById("requestMessagesContainer");
+  const requestMessagesContainer = document.getElementById("requestMessagesContainer");
 
   if (!requestMessagesContainer) return;
 
-  // stop previous listener
+  // stop old listener
   if (requestConversationUnsub) {
     requestConversationUnsub();
     requestConversationUnsub = null;
@@ -1087,7 +1081,7 @@ async function openRequestChat(userId) {
     orderBy("timestamp", "asc")
   );
 
-  requestConversationUnsub = onSnapshot(q, (snapshot) => {
+  requestConversationUnsub = onSnapshot(q, async (snapshot) => {
 
     requestMessagesContainer.innerHTML = "";
 
@@ -1096,35 +1090,61 @@ async function openRequestChat(userId) {
       return;
     }
 
-    snapshot.forEach((docSnap) => {
+    for (const docSnap of snapshot.docs) {
 
       const data = docSnap.data();
       const timestamp = data.timestamp?.toDate();
 
+      // 🔹 fetch sender profile
+      const userDoc = await getDoc(doc(db, "users", data.senderId));
+
+      const senderName = userDoc.exists()
+        ? window.formatChatName(userDoc.data().name)
+        : "User";
+
+      const senderImage =
+        userDoc.data()?.profileImage || "/default-avatar.png";
+
       const msgDiv = document.createElement("div");
       msgDiv.className = "message-item";
 
-      msgDiv.innerHTML = `<div class="message-header"> 
-      <img src="${data.profileImage || senderImage}" class="msg-profile-pic"/> 
-      <div> 
-      <strong>${window.formatChatName(data.name || userDoc.data()?.name)}</strong> 
-      <span class="time"> ${ timestamp?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) || "Now" } </span> 
-      </div> 
-      </div> 
-      <div class="message-body"> 
-      ${data.message ? <p class="msg-text">${data.message}</p> : ""} 
-      ${ data.fileUrl ? <img src="${data.fileUrl}" class="chat-image"/> : "" } 
-      </div>` ;
+      msgDiv.innerHTML = `
+      
+      <div class="message-header">
+        <img src="${senderImage}" class="msg-profile-pic" />
+
+        <div>
+          <strong>${senderName}</strong>
+          <span class="time">
+            ${
+              timestamp?.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit"
+              }) || "Now"
+            }
+          </span>
+        </div>
+      </div>
+
+      <div class="message-body">
+
+        ${data.message ? `<p class="msg-text">${data.message}</p>` : ""}
+
+        ${
+          data.fileUrl
+            ? `<img src="${data.fileUrl}" class="chat-image"/>`
+            : ""
+        }
+
+      </div>
+      `;
 
       requestMessagesContainer.appendChild(msgDiv);
-
-    });
+    }
 
     requestMessagesContainer.scrollTop =
       requestMessagesContainer.scrollHeight;
-
   });
-
 }
 
 // =======================
