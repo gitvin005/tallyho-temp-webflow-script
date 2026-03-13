@@ -1162,6 +1162,11 @@ async function openRequestChat(userId) {
 
   if (!requestMessagesContainer) return;
 
+  // ✅ stop previous listener
+  if (requestConversationUnsub) {
+    requestConversationUnsub();
+  }
+
   requestMessagesContainer.innerHTML = "<p>Loading...</p>";
 
   const q = query(
@@ -1169,7 +1174,7 @@ async function openRequestChat(userId) {
     orderBy("timestamp", "asc")
   );
 
-  onSnapshot(q, async (snapshot) => {
+  requestConversationUnsub = onSnapshot(q, async (snapshot) => {
 
     requestMessagesContainer.innerHTML = "";
 
@@ -1183,7 +1188,6 @@ async function openRequestChat(userId) {
       const data = docSnap.data();
       const timestamp = data.timestamp?.toDate();
 
-      // get sender profile
       const userDoc = await getDoc(doc(db, "users", data.senderId));
       const senderImage = userDoc.data()?.profileImage || "/default-avatar.png";
 
@@ -1191,19 +1195,18 @@ async function openRequestChat(userId) {
       msgDiv.className = "message-item";
 
       msgDiv.innerHTML = `
-      
       <div class="message-header">
         <img src="${data.profileImage || senderImage}" class="msg-profile-pic"/>
 
         <div>
           <strong>${window.formatChatName(data.name || userDoc.data()?.name)}</strong>
           <span class="time">
-          ${
-            timestamp?.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit"
-            }) || "Now"
-          }
+            ${
+              timestamp?.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit"
+              }) || "Now"
+            }
           </span>
         </div>
       </div>
