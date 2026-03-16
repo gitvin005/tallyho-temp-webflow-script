@@ -1385,6 +1385,19 @@ listenForNotifications(senderId);
 
 
 
+// Global badge state tracker
+const badgeState = {
+  notifications: 0,
+  messages: 0,
+  update() {
+    const badge = document.getElementById("notification-badge");
+    if (!badge) return;
+    const total = this.notifications + this.messages;
+    const displayCount = total > 9 ? "9+" : total;
+    badge.innerText = total > 0 ? displayCount : "";
+    badge.style.display = total > 0 ? "inline-block" : "none";
+  }
+};
 
 const loadNotifications = async () => {
   const userId = await getLoginId();
@@ -1470,8 +1483,8 @@ const loadNotifications = async () => {
     }
 
     // === Update badge ===
-    badge.textContent = unreadCount > 0 ? unreadCount : "";
-    badge.style.display = unreadCount > 0 ? "inline-block" : "none";
+    badgeState.notifications = unreadCount;   // ✅ replace with this
+    badgeState.update();
   });
 };
 
@@ -1526,10 +1539,8 @@ async function listenUnreadMessagesCountTab() {
 
         const displayCount = totalUnread > 9 ? "9+" : totalUnread;
 
-        if (badge) {
-          badge.innerText = displayCount;
-          badge.style.display = totalUnread > 0 ? "inline-block" : "none";
-        }
+        badgeState.messages = totalUnread;        // ✅ replace with this
+        badgeState.update()
 
       });
 
@@ -1644,11 +1655,8 @@ async function listenUnreadMessagesCount() {
       notificationList.appendChild(item);
     }
 
-    if (badge) {
-      const displayCount = totalUnread > 9 ? "9+" : totalUnread;
-      badge.innerText = displayCount;
-      badge.style.display = totalUnread > 0 ? "inline-block" : "none";
-    }
+    badgeState.messages = totalUnread;       // ✅ replace with this
+    badgeState.update();
 
     isRendering = false;
   }
