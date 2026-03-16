@@ -1551,7 +1551,7 @@ async function listenUnreadMessagesCountTab() {
 }
 
 listenUnreadMessagesCountTab()
-/*
+
 async function listenUnreadMessagesCount() {
   const loggedUserId = await getLoginId();
   if (!loggedUserId) return;
@@ -1662,7 +1662,7 @@ async function listenUnreadMessagesCount() {
   }
 }
 
-listenUnreadMessagesCount();*/
+listenUnreadMessagesCount();
 
 // finance page =============
 
