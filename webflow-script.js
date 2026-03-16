@@ -1502,7 +1502,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 /* conversation tab badge */
-/*
+
 async function listenUnreadMessagesCountTab() {
 
   const loggedUserId = await getLoginId();
@@ -1550,8 +1550,8 @@ async function listenUnreadMessagesCountTab() {
 
 }
 
-listenUnreadMessagesCountTab()*/
-
+listenUnreadMessagesCountTab()
+/*
 async function listenUnreadMessagesCount() {
   const loggedUserId = await getLoginId();
   if (!loggedUserId) return;
@@ -1662,7 +1662,7 @@ async function listenUnreadMessagesCount() {
   }
 }
 
-listenUnreadMessagesCount();
+listenUnreadMessagesCount();*/
 
 // finance page =============
 
