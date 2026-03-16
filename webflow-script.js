@@ -1384,7 +1384,7 @@ listenForNotifications(senderId);
 })();
 
 
-/*
+
 // Global badge state tracker
 const badgeState = {
   notifications: 0,
@@ -1550,7 +1550,7 @@ async function listenUnreadMessagesCountTab() {
 
 }
 
-listenUnreadMessagesCountTab()
+listenUnreadMessagesCountTab()*/
 
 async function listenUnreadMessagesCount() {
   const loggedUserId = await getLoginId();
@@ -1662,7 +1662,7 @@ async function listenUnreadMessagesCount() {
   }
 }
 
-listenUnreadMessagesCount();*/
+listenUnreadMessagesCount();
 
 // finance page =============
 
