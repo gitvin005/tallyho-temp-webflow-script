@@ -228,13 +228,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const profileImage = member.profileImage;
   const planConnections = member.planConnections || [];
 
-    // ✅ Save redirect URL from query param into localStorage (runs once on any page)
-  const urlParams = new URLSearchParams(window.location.search);
-  const redirectParam = urlParams.get("redirect");
-  if (redirectParam) {
-    localStorage.setItem("redirectAfterLogin", redirectParam);
-  }
-
   if (!member.verified && currentPath !== EMAIL_VERIFY_PATH) {
     return (window.location.href = EMAIL_VERIFY_PATH);
   }
@@ -280,16 +273,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   );
 
   if (allRequiredFilled && currentPath.startsWith("/onboarding/")) {
-    return (window.location.href = DASHBOARD_PATH);
-  }
-
-  // ✅ Onboarding complete — redirect to saved URL or fallback to dashboard
-  if (allRequiredFilled && currentPath.startsWith("/onboarding/")) {
-    const savedRedirect = localStorage.getItem("redirectAfterLogin");
-    if (savedRedirect) {
-      localStorage.removeItem("redirectAfterLogin");
-      return (window.location.href = savedRedirect);
-    }
     return (window.location.href = DASHBOARD_PATH);
   }
 
