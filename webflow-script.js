@@ -2163,3 +2163,71 @@ observer.observe(document.body, {
   childList: true,
   subtree: true,
 });
+
+
+// freelancer bga certifeid logo
+
+
+  // =========================
+  // ELEMENTS
+  // =========================
+  const fileInput = document.querySelector('#bga-cerified-logo');
+  const hiddenUrlField = document.querySelector('#certified-logo-url');
+
+  // =========================
+  // MEMBERSTACK INIT
+  // =========================
+  const memberstack = window.$memberstackDom;
+
+  // =========================
+  // FILE UPLOAD
+  // =========================
+  fileInput.addEventListener('change', async (e) => {
+
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    try {
+
+      // Get current member
+      const member = await memberstack.getCurrentMember();
+
+      const memberId = member?.data?.id;
+
+      // Create unique filename
+      const fileName = `${Date.now()}-${file.name}`;
+
+      // Firebase path
+      const storageRef = ref(
+        storage,
+        `images/freelancer_certified-logo/${memberId}/${fileName}`
+      );
+
+      // Upload file
+      await uploadBytes(storageRef, file);
+
+      // Get file URL
+      const downloadURL = await getDownloadURL(storageRef);
+
+      console.log(downloadURL);
+
+      // Add URL to hidden field
+      hiddenUrlField.value = downloadURL;
+
+      // Save into Memberstack custom field
+      /*await memberstack.updateMember({
+        customFields: {
+          "certified-logo-url": downloadURL
+        }
+      });*/
+
+      console.log('Logo uploaded successfully');
+
+    } catch (error) {
+
+      console.error(error);
+
+    }
+
+  });
