@@ -1968,9 +1968,16 @@ document.addEventListener("DOMContentLoaded", async function () {
       status: "completed",
       completedAt: serverTimestamp(),
     });
-    alert("🎉 Job marked as completed!");
+
+    const result = await markTransferPendingRequest(jobId);
+
+console.log(result);
+
+if (!result.success) {
+  alert(result.message);
+}
     loadClientPendingVerifications();
-    await markTransferPendingRequest(jobId);
+    
   };
 
   // Load verifications after user data is fetched
@@ -2279,6 +2286,17 @@ observer.observe(document.body, {
     }
 
   });
+
+
+  
+
+
+
+
+
+
+
+
 
 
   
