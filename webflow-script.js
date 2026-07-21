@@ -181,6 +181,8 @@ const hourlyRateField = document.getElementById("Per-Hour");
 const serviceRateField = document.getElementById("service-rate");
 
 function togglePaymentType() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const rate = urlParams.get("rate");
 
     if (byHourRadio.checked) {
 
@@ -192,6 +194,9 @@ function togglePaymentType() {
         hourField.disabled = false;
         hourlyRateField.disabled = false;
         serviceRateField.disabled = true;
+
+        // Restore hourly rate
+    hourlyRateField.value = rate || "";
 
     }
 
