@@ -160,7 +160,10 @@ window.addEventListener("DOMContentLoaded", () => {
   if (rate) document.getElementById("Per-Hour").value = rate;
 
   // Default payment type
-  document.getElementById("by-hour").checked = true;
+  const deafultType = document.getElementById("by-hour");
+  if(deafultType){
+    deafultType.checked = true;
+  }
 
   // Update UI
   togglePaymentType();
