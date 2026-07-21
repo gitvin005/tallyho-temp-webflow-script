@@ -160,30 +160,90 @@ window.addEventListener("DOMContentLoaded", () => {
   if (rate) document.getElementById("Per-Hour").value = rate;
 });
 
-function calculatePrice() {
-  const hours = parseFloat(document.getElementById("Hour").value);
-  const rate = parseFloat(document.getElementById("Per-Hour").value);
+const byHourRadio = document.getElementById("by-hour");
+const byServiceRadio = document.getElementById("by-services");
 
-  if (!isNaN(hours) && !isNaN(rate)) {
-    const amount = hours * rate;
+const perHourBlock = document.getElementById("per-hour-block");
+const serviceBlock = document.getElementById("service-rate-block");
+
+const hourField = document.getElementById("Hour");
+const hourlyRateField = document.getElementById("Per-Hour");
+const serviceRateField = document.getElementById("service-rate");
+
+function togglePaymentType() {
+
+    if (byHourRadio.checked) {
+
+        perHourBlock.style.display = "flex";
+        serviceBlock.style.display = "none";
+
+        serviceRateField.value = "";
+
+        hourField.disabled = false;
+        hourlyRateField.disabled = false;
+        serviceRateField.disabled = true;
+
+    }
+
+    if (byServiceRadio.checked) {
+
+        perHourBlock.style.display = "none";
+        serviceBlock.style.display = "block";
+
+        hourField.value = "";
+        hourlyRateField.value = "";
+
+        hourField.disabled = true;
+        hourlyRateField.disabled = true;
+        serviceRateField.disabled = false;
+
+    }
+
+    calculatePrice();
+}
+
+byHourRadio.addEventListener("change", togglePaymentType);
+byServiceRadio.addEventListener("change", togglePaymentType);
+
+togglePaymentType();
+
+function calculatePrice() {
+
+    let amount = 0;
+
+    if (byHourRadio.checked) {
+
+        const hours = parseFloat(hourField.value);
+        const rate = parseFloat(hourlyRateField.value);
+
+        if (!isNaN(hours) && !isNaN(rate)) {
+            amount = hours * rate;
+        }
+
+    } else {
+
+        const servicePrice = parseFloat(serviceRateField.value);
+
+        if (!isNaN(servicePrice)) {
+            amount = servicePrice;
+        }
+
+    }
+
     const serviceCharge = amount * 0.05;
     const total = amount + serviceCharge;
 
     document.getElementById("amount").textContent = amount.toFixed(2);
-    document.getElementById("serviceCharge").textContent =
-      serviceCharge.toFixed(2);
+    document.getElementById("serviceCharge").textContent = serviceCharge.toFixed(2);
     document.getElementById("total").textContent = total.toFixed(2);
-  }
+
 }
 
-const hourInput = document.getElementById("Hour");
-const rateInput = document.getElementById("Per-Hour");
+hourField.addEventListener("input", calculatePrice);
+hourlyRateField.addEventListener("input", calculatePrice);
+serviceRateField.addEventListener("input", calculatePrice);
 
-if (hourInput && rateInput) {
-  hourInput.addEventListener("input", calculatePrice);
-  rateInput.addEventListener("input", calculatePrice);
-  calculatePrice(); // Initial calculation
-}
+calculatePrice();
 
 document.addEventListener("DOMContentLoaded", function () {
   // Wait for Memberstack to load
@@ -1808,27 +1868,49 @@ document.addEventListener("DOMContentLoaded", async function () {
       const clientId = loggedInUserId;
       const jobTitle = document.querySelector("#Job-title")?.value.trim();
       const location = document.querySelector("#location")?.value.trim();
-      const hours = Number(document.querySelector("#Hour")?.value);
-      const perHour = Number(document.querySelector("#Per-Hour")?.value);
+      const paymentType = byHourRadio.checked ? "hourly" : "service";
+
+const hours = Number(document.querySelector("#Hour")?.value);
+const perHour = Number(document.querySelector("#Per-Hour")?.value);
+const servicePrice = Number(document.querySelector("#service-rate")?.value);
       const from = document.querySelector("#Job-from")?.value;
       const to = document.querySelector("#Job-to")?.value;
       const description = quill.root.innerHTML.trim();
 
       if (
-        !freelancerId ||
-        !jobTitle ||
-        !location ||
-        !hours ||
-        !perHour ||
-        !from ||
-        !to ||
-        !description
-      ) {
-        alert("Please fill in all required fields.");
-        return;
-      }
+    !freelancerId ||
+    !jobTitle ||
+    !location ||
+    !from ||
+    !to ||
+    !description
+) {
+    alert("Please fill in all required fields.");
+    return;
+}
 
-      const amount = hours * perHour;
+if (paymentType === "hourly") {
+
+    if (!hours || !perHour) {
+        alert("Please enter hours and hourly rate.");
+        return;
+    }
+
+}
+
+if (paymentType === "service") {
+
+    if (!servicePrice) {
+        alert("Please enter the agreed service price.");
+        return;
+    }
+
+}
+
+      const amount =
+    paymentType === "hourly"
+        ? hours * perHour
+        : servicePrice;
       const serviceCharge = amount * 0.05;
       const total = amount + serviceCharge;
 
@@ -1837,8 +1919,14 @@ document.addEventListener("DOMContentLoaded", async function () {
         freelancerId,
         jobTitle,
         location,
-        hours,
-        perHour,
+        paymentType,
+
+hours: paymentType === "hourly" ? hours : null,
+
+perHour: paymentType === "hourly" ? perHour : null,
+
+servicePrice: paymentType === "service" ? servicePrice : null,
+
         from,
         to,
         description,
