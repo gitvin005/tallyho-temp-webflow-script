@@ -151,113 +151,88 @@ document.querySelectorAll("#Offerjob").forEach((button) => {
 });
 
 window.addEventListener("DOMContentLoaded", () => {
+
+  // ── Guard: bail out early if this page doesn't have the invoice form ──
+  const byHourRadio    = document.getElementById("by-hour");
+  const byServiceRadio = document.getElementById("by-services");
+
+  if (!byHourRadio || !byServiceRadio) return; // ← exits cleanly on other pages
+
+  // ── Element refs (safe to grab now that we've confirmed the form exists) ──
+  const perHourBlock    = document.getElementById("per-hour-block");
+  const serviceBlock    = document.getElementById("service-rate-block");
+  const hourField       = document.getElementById("Hour");
+  const hourlyRateField = document.getElementById("Per-Hour");
+  const serviceRateField = document.getElementById("service-rate");
+
   const urlParams = new URLSearchParams(window.location.search);
-  const userId = urlParams.get("userId");
-  const userName = urlParams.get("name");
-  const rate = urlParams.get("rate");
+  const userName  = urlParams.get("name");
+  const rate      = urlParams.get("rate");
 
   if (userName) document.getElementById("Freelancer").value = userName;
-  if (rate) document.getElementById("Per-Hour").value = rate;
+  if (rate)     hourlyRateField.value = rate;
 
-  
-
-  // Update UI
-  togglePaymentType();
-
-  // Calculate initial price
-  calculatePrice();
-  
-});
-
-const byHourRadio = document.getElementById("by-hour");
-const byServiceRadio = document.getElementById("by-services");
-
-const perHourBlock = document.getElementById("per-hour-block");
-const serviceBlock = document.getElementById("service-rate-block");
-
-const hourField = document.getElementById("Hour");
-const hourlyRateField = document.getElementById("Per-Hour");
-const serviceRateField = document.getElementById("service-rate");
-
-function togglePaymentType() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const rate = urlParams.get("rate");
+  // ── Helpers ──
+  function togglePaymentType() {
+    const currentRate = urlParams.get("rate");
 
     if (byHourRadio.checked) {
+      perHourBlock.style.display  = "flex";
+      serviceBlock.style.display  = "none";
 
-        perHourBlock.style.display = "flex";
-        serviceBlock.style.display = "none";
+      serviceRateField.value    = "";
+      serviceRateField.disabled = true;
 
-        serviceRateField.value = "";
+      hourField.disabled       = false;
+      hourlyRateField.disabled = false;
+      hourlyRateField.value    = currentRate || "";
 
-        hourField.disabled = false;
-        hourlyRateField.disabled = false;
-        serviceRateField.disabled = true;
+    } else {
+      perHourBlock.style.display  = "none";
+      serviceBlock.style.display  = "block";
 
-        // Restore hourly rate
-    hourlyRateField.value = rate || "";
-
-    }
-
-    if (byServiceRadio.checked) {
-
-        perHourBlock.style.display = "none";
-        serviceBlock.style.display = "block";
-
-        hourField.value = "";
-        hourlyRateField.value = "";
-
-        hourField.disabled = true;
-        hourlyRateField.disabled = true;
-        serviceRateField.disabled = false;
-
+      hourField.value          = "";
+      hourlyRateField.value    = "";
+      hourField.disabled       = true;
+      hourlyRateField.disabled = true;
+      serviceRateField.disabled = false;
     }
 
     calculatePrice();
-}
+  }
 
-byHourRadio.addEventListener("change", togglePaymentType);
-byServiceRadio.addEventListener("change", togglePaymentType);
-
-togglePaymentType();
-
-function calculatePrice() {
-
+  function calculatePrice() {
     let amount = 0;
 
     if (byHourRadio.checked) {
-
-        const hours = parseFloat(hourField.value);
-        const rate = parseFloat(hourlyRateField.value);
-
-        if (!isNaN(hours) && !isNaN(rate)) {
-            amount = hours * rate;
-        }
-
+      const hours = parseFloat(hourField.value);
+      const rate  = parseFloat(hourlyRateField.value);
+      if (!isNaN(hours) && !isNaN(rate)) amount = hours * rate;
     } else {
-
-        const servicePrice = parseFloat(serviceRateField.value);
-
-        if (!isNaN(servicePrice)) {
-            amount = servicePrice;
-        }
-
+      const servicePrice = parseFloat(serviceRateField.value);
+      if (!isNaN(servicePrice)) amount = servicePrice;
     }
 
     const serviceCharge = amount * 0.05;
-    const total = amount + serviceCharge;
+    const total         = amount + serviceCharge;
 
-    document.getElementById("amount").textContent = amount.toFixed(2);
+    document.getElementById("amount").textContent        = amount.toFixed(2);
     document.getElementById("serviceCharge").textContent = serviceCharge.toFixed(2);
-    document.getElementById("total").textContent = total.toFixed(2);
+    document.getElementById("total").textContent         = total.toFixed(2);
+  }
 
-}
+  // ── Init ──
+  byHourRadio.checked = true;
+  togglePaymentType();
 
-hourField.addEventListener("input", calculatePrice);
-hourlyRateField.addEventListener("input", calculatePrice);
-serviceRateField.addEventListener("input", calculatePrice);
+  // ── Events ──
+  byHourRadio.addEventListener("change", togglePaymentType);
+  byServiceRadio.addEventListener("change", togglePaymentType);
+  hourField.addEventListener("input", calculatePrice);
+  hourlyRateField.addEventListener("input", calculatePrice);
+  serviceRateField.addEventListener("input", calculatePrice);
 
-calculatePrice();
+});
 
 document.addEventListener("DOMContentLoaded", function () {
   // Wait for Memberstack to load
