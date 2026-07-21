@@ -166,6 +166,13 @@ window.addEventListener("DOMContentLoaded", () => {
   const hourlyRateField = document.getElementById("Per-Hour");
   const serviceRateField = document.getElementById("service-rate");
 
+  const defaultRate = urlParams.get("rate");
+
+if (defaultRate) {
+  hourlyRateField.value = defaultRate;
+}
+
+
   if (userName) {
     document.getElementById("Freelancer").value = userName;
   }
@@ -214,6 +221,10 @@ window.addEventListener("DOMContentLoaded", () => {
 
       hourField.disabled = false;
       hourlyRateField.disabled = false;
+
+       // Restore hourly rate
+    hourlyRateField.value = defaultRate || "";
+    
     }
 
     if (byServiceRadio.checked) {
