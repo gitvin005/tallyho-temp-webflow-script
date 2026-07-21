@@ -159,11 +159,7 @@ window.addEventListener("DOMContentLoaded", () => {
   if (userName) document.getElementById("Freelancer").value = userName;
   if (rate) document.getElementById("Per-Hour").value = rate;
 
-  // Default payment type
-  const deafultType = document.getElementById("by-hour");
-  if(deafultType){
-    deafultType.checked = true;
-  }
+  
 
   // Update UI
   togglePaymentType();
