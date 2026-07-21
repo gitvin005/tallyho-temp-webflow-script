@@ -1818,133 +1818,104 @@ async function hireFreelancer(freelancerId, amount, jobData, clientId) {
 }
 
 document.addEventListener("DOMContentLoaded", async function () {
+
+  // ── Guard: exit if this page doesn't have the job form ──
   const submitBtn = document.getElementById("submit-job-btn");
+  if (!submitBtn) return;
+
   const fromInput = document.querySelector("#Job-from");
   const hourInput = document.querySelector("#Hour");
-  const toInput = document.querySelector("#Job-to");
+  const toInput   = document.querySelector("#Job-to");
   const loggedInUserId = await getLoginId();
 
+  // Store job data in closure — no need for JSON in DOM attributes
+  let pendingJobData = null;
+
   function getFreelancerIdFromUrl() {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get("userId");
+    return new URLSearchParams(window.location.search).get("userId");
   }
 
+  // ── Auto-calculate "to" time ──
   const calculateToTime = () => {
-    const fromValue = fromInput?.value;
+    const fromValue  = fromInput?.value;
     const hoursValue = Number(hourInput?.value);
-    if (fromValue && hoursValue > 0) {
-      const fromDate = new Date(fromValue);
-      const toDate = new Date(fromDate.getTime() + hoursValue * 60 * 60 * 1000);
-      const year = toDate.getFullYear();
-      const month = String(toDate.getMonth() + 1).padStart(2, "0");
-      const day = String(toDate.getDate()).padStart(2, "0");
-      const hours = String(toDate.getHours()).padStart(2, "0");
-      const minutes = String(toDate.getMinutes()).padStart(2, "0");
-      const formatted = `${year}-${month}-${day}T${hours}:${minutes}`;
-      toInput.value = formatted;
-    }
+    if (!fromValue || hoursValue <= 0) return;
+
+    const toDate  = new Date(new Date(fromValue).getTime() + hoursValue * 3600000);
+    const pad     = (n) => String(n).padStart(2, "0");
+    toInput.value = `${toDate.getFullYear()}-${pad(toDate.getMonth() + 1)}-${pad(toDate.getDate())}T${pad(toDate.getHours())}:${pad(toDate.getMinutes())}`;
   };
 
-  if (fromInput && hourInput) {
-    fromInput.addEventListener("change", calculateToTime);
-    hourInput.addEventListener("input", calculateToTime);
-  }
+  fromInput?.addEventListener("change", calculateToTime);
+  hourInput?.addEventListener("input",  calculateToTime);
 
-  if (submitBtn) {
-    submitBtn.addEventListener("click", async function (e) {
-      e.preventDefault();
-      const freelancerId = getFreelancerIdFromUrl();
-      const clientId = loggedInUserId;
-      const jobTitle = document.querySelector("#Job-title")?.value.trim();
-      const location = document.querySelector("#location")?.value.trim();
-      const paymentType = byHourRadio.checked ? "hourly" : "service";
+  // ── Submit: validate, build jobData, store in closure ──
+  submitBtn.addEventListener("click", async function (e) {
+    e.preventDefault();
 
-const hours = Number(document.querySelector("#Hour")?.value);
-const perHour = Number(document.querySelector("#Per-Hour")?.value);
-const servicePrice = Number(document.querySelector("#service-rate")?.value);
-      const from = document.querySelector("#Job-from")?.value;
-      const to = document.querySelector("#Job-to")?.value;
-      const description = quill.root.innerHTML.trim();
+    // Read radio state directly — no cross-script variable dependency
+    const byHourRadio = document.getElementById("by-hour");
+    const paymentType = byHourRadio?.checked ? "hourly" : "service";
 
-      if (
-    !freelancerId ||
-    !jobTitle ||
-    !location ||
-    !from ||
-    !to ||
-    !description
-) {
-    alert("Please fill in all required fields.");
-    return;
-}
+    const freelancerId = getFreelancerIdFromUrl();
+    const clientId     = loggedInUserId;
+    const jobTitle     = document.querySelector("#Job-title")?.value.trim();
+    const location     = document.querySelector("#location")?.value.trim();
+    const hours        = Number(document.querySelector("#Hour")?.value);
+    const perHour      = Number(document.querySelector("#Per-Hour")?.value);
+    const servicePrice = Number(document.querySelector("#service-rate")?.value);
+    const from         = document.querySelector("#Job-from")?.value;
+    const to           = document.querySelector("#Job-to")?.value;
+    const description  = quill.root.innerHTML.trim();
 
-if (paymentType === "hourly") {
-
-    if (!hours || !perHour) {
-        alert("Please enter hours and hourly rate.");
-        return;
+    // Validation
+    if (!freelancerId || !jobTitle || !location || !from || !to || !description) {
+      alert("Please fill in all required fields.");
+      return;
+    }
+    if (paymentType === "hourly" && (!hours || !perHour)) {
+      alert("Please enter hours and hourly rate.");
+      return;
+    }
+    if (paymentType === "service" && !servicePrice) {
+      alert("Please enter the agreed service price.");
+      return;
     }
 
-}
+    const amount        = paymentType === "hourly" ? hours * perHour : servicePrice;
+    const serviceCharge = amount * 0.05;
+    const total         = amount + serviceCharge;
 
-if (paymentType === "service") {
+    // Save to closure variable — not a DOM attribute
+    pendingJobData = {
+      clientId, freelancerId, jobTitle, location, paymentType,
+      hours:        paymentType === "hourly"   ? hours        : null,
+      perHour:      paymentType === "hourly"   ? perHour      : null,
+      servicePrice: paymentType === "service"  ? servicePrice : null,
+      from, to, description, amount, serviceCharge, total,
+      status: "pending",
+      paymentStatus: "paid",
+    };
 
-    if (!servicePrice) {
-        alert("Please enter the agreed service price.");
-        return;
+    // Only set lightweight attributes on the button
+    const hireButton = document.querySelector(".hire-button");
+    if (hireButton) {
+      hireButton.setAttribute("data-amount", total.toFixed(2));
+      hireButton.setAttribute("data-freelancer-id", freelancerId);
     }
+  });
 
-}
-
-      const amount =
-    paymentType === "hourly"
-        ? hours * perHour
-        : servicePrice;
-      const serviceCharge = amount * 0.05;
-      const total = amount + serviceCharge;
-
-      const jobData = {
-        clientId,
-        freelancerId,
-        jobTitle,
-        location,
-        paymentType,
-
-hours: paymentType === "hourly" ? hours : null,
-
-perHour: paymentType === "hourly" ? perHour : null,
-
-servicePrice: paymentType === "service" ? servicePrice : null,
-
-        from,
-        to,
-        description,
-        amount,
-        serviceCharge,
-        total,
-        status: "pending",
-        paymentStatus: "paid",
-      };
-
-      // Set hire button values
-      const hireButton = document.querySelector(".hire-button");
-      if (hireButton) {
-        hireButton.setAttribute("data-amount", total.toFixed(2));
-        hireButton.setAttribute("data-freelancer-id", freelancerId);
-        hireButton.setAttribute("data-job", JSON.stringify(jobData)); // Attach job data
-      }
-    });
-  }
-
-  // Handle click on "Hire Freelancer" buttons
+  // ── Hire button: reads from closure, not DOM attribute ──
   document.querySelectorAll(".hire-button").forEach((button) => {
     button.addEventListener("click", () => {
-      const freelancerId = button.getAttribute("data-freelancer-id");
-      const amount = parseFloat(button.getAttribute("data-amount"));
-      const jobData = JSON.parse(button.getAttribute("data-job"));
-      hireFreelancer(freelancerId, amount, jobData);
+      if (!pendingJobData) {
+        alert("Please fill and submit the job form first.");
+        return;
+      }
+      hireFreelancer(pendingJobData.freelancerId, pendingJobData.total, pendingJobData);
     });
   });
+
 });
 
 // ✅ Client View: Load Pending Verifications
