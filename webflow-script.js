@@ -1907,15 +1907,44 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   // ── Hire button: reads from closure, not DOM attribute ──
   document.querySelectorAll(".hire-button").forEach((button) => {
-    button.addEventListener("click", () => {
-      if (!pendingJobData) {
-        alert("Please fill and submit the job form first.");
-        return;
-      }
-      button.innerText = "Loading..."
-      hireFreelancer(pendingJobData.freelancerId, pendingJobData.total, pendingJobData);
-    });
+  button.addEventListener("click", async () => {
+    if (!pendingJobData) {
+      alert("Please fill and submit the job form first.");
+      return;
+    }
+
+    // Prevent double-click firing two sessions
+    if (button.disabled) return;
+
+    const originalText = button.innerText;
+
+    // Update button state
+    button.innerText    = "Loading...";
+    button.disabled     = true;
+    button.style.opacity = "0.7";
+    button.style.cursor  = "not-allowed";
+
+    // ✅ Yield to the browser so it paints "Loading..." BEFORE the fetch starts
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
+    try {
+      await hireFreelancer(
+        pendingJobData.freelancerId,
+        pendingJobData.total,
+        pendingJobData
+      );
+      // If we reach here, result.url was missing (checkout failed)
+      // Navigation would have already fired on success, so restore the button
+    } finally {
+      // Runs on error OR if checkout returns no URL
+      // Does NOT run if page navigates away (window.location.href takes over)
+      button.innerText     = originalText;
+      button.disabled      = false;
+      button.style.opacity = "";
+      button.style.cursor  = "";
+    }
   });
+});
 
 });
 
