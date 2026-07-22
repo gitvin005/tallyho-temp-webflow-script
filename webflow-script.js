@@ -1795,11 +1795,10 @@ async function hireFreelancer(freelancerId, amount, jobData, clientId) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          ...jobData,
           freelancerId,
           amount,
           clientEmail,
-          clientId: jobData?.clientId,
-          jobTitle: jobData?.jobTitle || "", // assuming jobTitle is inside jobData
         }),
       },
     );
@@ -1894,7 +1893,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       servicePrice: paymentType === "service"  ? servicePrice : null,
       from, to, description, amount, serviceCharge, total,
       status: "pending",
-      paymentStatus: "paid",
+      paymentStatus: "pending",
     };
 
     // Only set lightweight attributes on the button
