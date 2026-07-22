@@ -1912,6 +1912,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         alert("Please fill and submit the job form first.");
         return;
       }
+      button.innerText = "Loading..."
       hireFreelancer(pendingJobData.freelancerId, pendingJobData.total, pendingJobData);
     });
   });
