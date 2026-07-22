@@ -1455,22 +1455,38 @@ const loadNotifications = async () => {
 
   if (!notificationList || !userId) return;
 
-  let unreadCount = 0;
-  let hasFirestoreNotifications = false;
-  let hasJobOffers = false;
+  // Load job offers ONCE outside snapshot (they don't need real-time)
+  const jobQuery = query(
+    collection(db, "jobOffers"),
+    where("freelancerId", "==", userId),
+    where("status", "==", "pending"),
+  );
 
-  notificationList.innerHTML = ""; // Reset content
-
-  // === Firestore Notifications ===
   const notifQuery = query(
     collection(db, "users", userId, "notifications"),
-    orderBy("timestamp", "desc"),
+    orderBy("timestamp", "asc"), // ✅ asc so prepend() puts newest on top
   );
-  onSnapshot(notifQuery, async (snapshot) => {
-    notificationList.innerHTML = ""; // Clear on every snapshot update
-    unreadCount = 0;
-    hasFirestoreNotifications = !snapshot.empty;
 
+  onSnapshot(notifQuery, async (snapshot) => {
+    notificationList.innerHTML = "";
+    let unreadCount = 0;
+
+    // === Job Offers — appended first so they appear at the BOTTOM ===
+    const jobSnapshot = await getDocs(jobQuery);
+    if (!jobSnapshot.empty) {
+      jobSnapshot.forEach((docSnap) => {
+        const job = docSnap.data();
+        const jobId = docSnap.id;
+
+        const jobItem = document.createElement("div");
+        jobItem.className = "notification-item job-pending";
+        jobItem.setAttribute("data-id", jobId);
+        jobItem.innerHTML = `<div class="notification">🚨 New job offer: ${job.jobTitle}</div>`;
+        notificationList.appendChild(jobItem); // bottom is fine for job offers
+      });
+    }
+
+    // === Firestore Notifications — prepend so newest goes to TOP ===
     if (!snapshot.empty) {
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
@@ -1483,9 +1499,7 @@ const loadNotifications = async () => {
         item.setAttribute("data-id", notificationId);
         item.innerHTML = `
           <div class="notification request_notfication">
-            <img src="${data.senderImage}" alt="${
-              data.senderName
-            }" width="30" />
+            <img src="${data.senderImage}" alt="${data.senderName}" width="30" />
             <div>
               <strong>${data.title}</strong><br/>
               <p>${data.message}</p>
@@ -1499,40 +1513,19 @@ const loadNotifications = async () => {
         item.addEventListener("click", () =>
           markNotificationAsRead(userId, notificationId),
         );
-        notificationList.appendChild(item);
+
+        notificationList.prepend(item); // ✅ newest always goes to TOP
       });
     }
 
-    // === Job Offers (load only once) ===
-    const jobQuery = query(
-      collection(db, "jobOffers"),
-      where("freelancerId", "==", userId),
-      where("status", "==", "pending"),
-    );
-    const jobSnapshot = await getDocs(jobQuery);
-
-    if (!jobSnapshot.empty) {
-      hasJobOffers = true;
-      jobSnapshot.forEach((docSnap) => {
-        const job = docSnap.data();
-        const jobId = docSnap.id;
-
-        const jobItem = document.createElement("div");
-        jobItem.className = "notification-item job-pending";
-        jobItem.setAttribute("data-id", jobId);
-        jobItem.innerHTML = `<div class="notification">🚨 New job offer: ${job.jobTitle}</div>`;
-        notificationList.appendChild(jobItem);
-      });
-    }
-
-    // === Show fallback if both are empty ===
-    if (!hasFirestoreNotifications && !hasJobOffers) {
+    // === Fallback if both empty ===
+    if (snapshot.empty && jobSnapshot.empty) {
       notificationList.innerHTML =
         "<div class='no-notification'>Nothing Found</div>";
     }
 
     // === Update badge ===
-    badgeState.notifications = unreadCount;   // ✅ replace with this
+    badgeState.notifications = unreadCount;
     badgeState.update();
   });
 };
