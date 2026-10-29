@@ -790,7 +790,7 @@ const isNew = !chatSnap.exists() || requestSnap.exists();
 
     
 const ZAPIER_WEBHOOK_URL =
-  "PASTE_YOUR_ZAPIER_CATCH_HOOK_URL_HERE";
+  "https://hooks.zapier.com/hooks/catch/20702053/uluymdn/";
 
 try {
   const notificationStatus = isNew
@@ -824,7 +824,7 @@ try {
     sentAt: new Date().toISOString()
   };
 
-  const ZAPIER_WEBHOOK_URL = "https://hooks.zapier.com/hooks/catch/20702053/uluymdn/";
+  
 
   const response = await fetch(ZAPIER_WEBHOOK_URL, {
     method: "POST",
