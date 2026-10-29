@@ -471,6 +471,7 @@ async function markTransferPendingRequest(jobId) {
 document.querySelectorAll(".contact-btn").forEach((button) => {
   button.addEventListener("click", async function () {
     const receiverId = this.dataset.userId;
+    
 
     const userDoc = await getDoc(doc(db, "users", receiverId));
     if (!userDoc.exists()) {
@@ -522,11 +523,28 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
   let uploadedFileURL = null;
   let isUploading = false;
 
-  const userSlug = new URLSearchParams(window.location.search).get("user");
-  let receiverId = sessionStorage.getItem(`nameToId:${userSlug}`);
-  let conversationId = receiverId
-    ? [senderId, receiverId].sort().join("_")
-    : null;
+  // const userSlug = new URLSearchParams(window.location.search).get("user");
+  // let receiverId = sessionStorage.getItem(`nameToId:${userSlug}`);
+  // let conversationId = receiverId
+  //   ? [senderId, receiverId].sort().join("_")
+  //   : null;
+
+  
+const urlParams = new URLSearchParams(window.location.search);
+
+const userSlug = urlParams.get("user");
+const userIdParam = urlParams.get("userId");
+
+let receiverId =
+  userIdParam ||
+  (userSlug
+    ? sessionStorage.getItem(`nameToId:${userSlug}`)
+    : null);
+
+let conversationId = receiverId
+  ? [senderId, receiverId].sort().join("_")
+  : null;
+
 
   await setDoc(
     doc(db, "users", senderId),
@@ -692,10 +710,24 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
 
     if (!message && !uploadedFileURL) return;
 
-    const chatSnap = await getDoc(
-      doc(db, "users", receiverId, "chats", senderId),
-    );
-    const isNew = !chatSnap.exists();
+    // const chatSnap = await getDoc(
+    //   doc(db, "users", receiverId, "chats", senderId),
+    // );
+    // const isNew = !chatSnap.exists();
+
+    
+const chatSnap = await getDoc(
+  doc(db, "users", receiverId, "chats", senderId)
+);
+
+const requestSnap = await getDoc(
+  doc(db, "users", receiverId, "requests", senderId)
+);
+
+// A request is pending if the request document exists.
+// If there is no chat and no request, this is a new request.
+const isNew = !chatSnap.exists() || requestSnap.exists();
+
 
     if (isNew) {
       await setDoc(doc(db, "users", receiverId, "requests", senderId), {
@@ -714,18 +746,34 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
       });
     }
 
-    await addDoc(collection(db, "conversations", conversationId, "messages"), {
-      senderId,
-      receiverId,
-      message,
-      name: senderName,
-      profileImage: senderImage,
-      timestamp: serverTimestamp(),
-      fileUrl: uploadedFileURL || "",
-      fileName: uploadedFile?.name || "",
-      pending: isNew,
-      read: false,
-    });
+    // await addDoc(collection(db, "conversations", conversationId, "messages"), {
+    //   senderId,
+    //   receiverId,
+    //   message,
+    //   name: senderName,
+    //   profileImage: senderImage,
+    //   timestamp: serverTimestamp(),
+    //   fileUrl: uploadedFileURL || "",
+    //   fileName: uploadedFile?.name || "",
+    //   pending: isNew,
+    //   read: false,
+    // });
+
+    const messageRef = await addDoc(
+      collection(db, "conversations", conversationId, "messages"),
+      {
+        senderId,
+        receiverId,
+        message,
+        name: senderName,
+        profileImage: senderImage,
+        timestamp: serverTimestamp(),
+        fileUrl: uploadedFileURL || "",
+        fileName: uploadedFile?.name || "",
+        pending: isNew,
+        read: false,
+      }
+    );
 
     await Promise.all([
       setDoc(doc(db, "users", senderId, "chats", receiverId), {
@@ -739,6 +787,71 @@ document.querySelectorAll(".contact-btn").forEach((button) => {
         timestamp: serverTimestamp(),
       }),
     ]);
+
+    
+const ZAPIER_WEBHOOK_URL =
+  "PASTE_YOUR_ZAPIER_CATCH_HOOK_URL_HERE";
+
+try {
+  const notificationStatus = isNew
+    ? "new_request"
+    : "new_message";
+
+  // The receiver opens a conversation with the sender.
+  const messageUrl = new URL(
+    "/conversation",
+    window.location.origin
+  );
+
+  messageUrl.searchParams.set("userId", senderId);
+
+  const payload = {
+    event: "message_notification",
+    notificationStatus: notificationStatus,
+
+    // Memberstack ID of the person receiving the email
+    receiverMemberstackId: receiverId,
+
+    // Details for identifying the conversation
+    senderId: senderId,
+    senderName: senderName,
+    conversationId: conversationId,
+    messageId: messageRef.id,
+
+    // Link to open the conversation
+    messageUrl: messageUrl.toString(),
+
+    sentAt: new Date().toISOString()
+  };
+
+  const ZAPIER_WEBHOOK_URL = "https://hooks.zapier.com/hooks/catch/20702053/uluymdn/";
+
+  const response = await fetch(ZAPIER_WEBHOOK_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Zapier webhook returned HTTP ${response.status}`
+    );
+  }
+
+  console.log(
+    "Zapier notification triggered:",
+    notificationStatus
+  );
+
+} catch (error) {
+  console.error(
+    "Zapier email notification failed:",
+    error
+  );
+}
+
 
     inputEl.value = "";
     uploadedFile = null;
