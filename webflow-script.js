@@ -789,8 +789,8 @@ const isNew = !chatSnap.exists() || requestSnap.exists();
     ]);
 
     
-const ZAPIER_WEBHOOK_URL =
-  "https://hooks.zapier.com/hooks/catch/20702053/uluymdn/";
+const FIREBASE_FUNCTION_URL =
+  "https://us-central1-tallyhotemps.cloudfunctions.net/sendMessageEmailNotification";
 
 try {
   const notificationStatus = isNew
@@ -826,7 +826,7 @@ try {
 
   
 
-  const response = await fetch(ZAPIER_WEBHOOK_URL, {
+  const response = await fetch(FIREBASE_FUNCTION_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
