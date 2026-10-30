@@ -692,9 +692,9 @@ let conversationId = receiverId
   // Function to send a message
   const sendMessage = async () => {
     if (!receiverId || !conversationId) {
-  alert("No user selected");
-  return;
-}
+      alert("No user selected");
+      return;
+    }
 
     if (senderId === receiverId) {
       alert("You cannot send a message to yourself.");
@@ -716,13 +716,13 @@ let conversationId = receiverId
     // const isNew = !chatSnap.exists();
 
     
-const chatSnap = await getDoc(
-  doc(db, "users", receiverId, "chats", senderId)
-);
+    const chatSnap = await getDoc(
+      doc(db, "users", receiverId, "chats", senderId)
+    );
 
-const requestSnap = await getDoc(
-  doc(db, "users", receiverId, "requests", senderId)
-);
+    const requestSnap = await getDoc(
+      doc(db, "users", receiverId, "requests", senderId)
+    );
 
 // A request is pending if the request document exists.
 // If there is no chat and no request, this is a new request.
@@ -1762,7 +1762,7 @@ async function listenUnreadMessagesCount() {
         </div>
       `;
       item.addEventListener("click", () => {
-        window.location.href = `/messages?user=${senderId}`;
+        window.location.href = `/conversation?user=${senderId}`;
       });
       notificationList.appendChild(item);
     }
