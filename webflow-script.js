@@ -790,7 +790,7 @@ const isNew = !chatSnap.exists() || requestSnap.exists();
 
     
 const FIREBASE_FUNCTION_URL =
-  "https://us-central1-tallyhotemps.cloudfunctions.net/sendMessageEmailNotification";
+  "https://sendmessageemailnotification-2wq74fpmva-uc.a.run.app";
 
 try {
   const notificationStatus = isNew
