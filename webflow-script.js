@@ -791,6 +791,7 @@ const isNew = !chatSnap.exists() || requestSnap.exists();
     
 const FIREBASE_FUNCTION_URL =
   "https://sendmessageemailnotification-2wq74fpmva-uc.a.run.app";
+  
 
 try {
   const notificationStatus = isNew
@@ -803,7 +804,7 @@ try {
     window.location.origin
   );
 
-  messageUrl.searchParams.set("userId", senderId);
+  messageUrl.searchParams.set("user", senderId);
 
   const payload = {
     event: "message_notification",
