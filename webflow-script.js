@@ -917,6 +917,8 @@ try {
   freelancerBtn.addEventListener("click", function (e) {
     e.preventDefault();
 
+    freelancerBtn.innerText = "Redirecting....";
+
     const userId = this.dataset.id;
 
     fetch(`https://api-ten-gamma-86.vercel.app/api/proxy-freelancer?id=${userId}`)
@@ -944,6 +946,7 @@ try {
       .catch((err) => {
         console.error(err);
         alert("Error fetching freelancer data.");
+        freelancerBtn.innerText = "Book Freelancer";
       });
 
   });
